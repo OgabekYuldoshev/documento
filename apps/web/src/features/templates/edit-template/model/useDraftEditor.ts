@@ -22,9 +22,14 @@ const toSnapshot = (d: TemplateDraft): Snapshot => ({
   maxPayloadKb: d.maxPayloadKb,
 });
 
-export type PreviewState =
-  | { kind: "ok"; url: string; pages: number; durationMs: number }
-  | { kind: "error"; title: string; lines: string[] };
+/** Last successful render: one Blob URL (image/svg+xml) per page. */
+export type PreviewPages = { urls: string[]; durationMs: number };
+
+export type PreviewProblem = {
+  title: string;
+  /** `line` is set when the message points into the editable Typst source. */
+  items: { text: string; line?: number }[];
+};
 
 const FAILURE_TITLES: Record<string, string> = {
   validation: "Namuna ma'lumot schemaga mos emas",
@@ -40,17 +45,19 @@ type Failure = {
   diagnostics?: { file?: string; line?: number; column?: number; message: string }[];
 };
 
-function failureLines(r: Failure): string[] {
-  if (r.errors) return r.errors.map((e) => `${e.path || "/"}: ${e.message}`);
-  return (r.diagnostics ?? []).map((d) =>
-    d.line ? `${d.file ?? "main.typ"}:${d.line}:${d.column ?? 0}  ${d.message}` : d.message,
-  );
+function failureItems(r: Failure): PreviewProblem["items"] {
+  if (r.errors) return r.errors.map((e) => ({ text: `${e.path || "/"}: ${e.message}` }));
+  return (r.diagnostics ?? []).map((d) => {
+    const inSource = !d.file || d.file === "main.typ";
+    return {
+      text: d.line ? `${d.file ?? "main.typ"}:${d.line}:${d.column ?? 0}  ${d.message}` : d.message,
+      line: inSource ? d.line : undefined,
+    };
+  });
 }
 
-function pdfUrl(base64: string): string {
-  const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
-  return URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
-}
+// Rendered as <img>, never inlined: scripts inside an SVG do not run in an image context.
+const svgUrl = (svg: string) => URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" }));
 
 function parseObject(text: string): Record<string, unknown> | null {
   try {
@@ -81,14 +88,21 @@ export function useDraftEditor(projectId: string, templateId: string, draft: Tem
   });
   const publishMutation = useMutation(trpc.templates.publish.mutationOptions());
   const previewMutation = useMutation(trpc.templates.preview.mutationOptions());
-  const [preview, setPreview] = useState<PreviewState | null>(null);
+  // The last good render stays on screen while a newer one runs or fails (no flashing).
+  const [preview, setPreview] = useState<PreviewPages | null>(null);
+  const [problem, setProblem] = useState<PreviewProblem | null>(null);
 
   // Blob URLs are not garbage collected: revoke on replace and on unmount.
+  const urls = useRef<string[]>([]);
+  const replaceUrls = (next: string[]) => {
+    for (const url of urls.current) URL.revokeObjectURL(url);
+    urls.current = next;
+  };
   useEffect(
     () => () => {
-      if (preview?.kind === "ok") URL.revokeObjectURL(preview.url);
+      for (const url of urls.current) URL.revokeObjectURL(url);
     },
-    [preview],
+    [],
   );
 
   const runId = useRef(0);
@@ -99,12 +113,11 @@ export function useDraftEditor(projectId: string, templateId: string, draft: Tem
     const sampleData = parseObject(form.sampleText);
     const schema = parseObject(form.schemaText);
     if (!schema || !sampleData) {
-      setPreview({
-        kind: "error",
+      setProblem({
         title: "JSON to'g'ri emas",
-        lines: [
-          ...(schema ? [] : ["Schema to'g'ri JSON obyekt emas"]),
-          ...(sampleData ? [] : ["Namuna ma'lumot to'g'ri JSON obyekt emas"]),
+        items: [
+          ...(schema ? [] : [{ text: "Schema to'g'ri JSON obyekt emas" }]),
+          ...(sampleData ? [] : [{ text: "Namuna ma'lumot to'g'ri JSON obyekt emas" }]),
         ],
       });
       return;
@@ -120,17 +133,14 @@ export function useDraftEditor(projectId: string, templateId: string, draft: Tem
       });
       if (id !== runId.current) return;
       if (r.ok) {
-        setPreview({
-          kind: "ok",
-          url: pdfUrl(r.pdfBase64),
-          pages: r.pages,
-          durationMs: r.durationMs,
-        });
+        const next = r.svgPages.map(svgUrl);
+        replaceUrls(next);
+        setPreview({ urls: next, durationMs: r.durationMs });
+        setProblem(null);
       } else {
-        setPreview({
-          kind: "error",
+        setProblem({
           title: FAILURE_TITLES[r.kind] ?? "Xatolik",
-          lines: failureLines(r as Failure),
+          items: failureItems(r as Failure),
         });
       }
     } catch (error) {
@@ -138,10 +148,12 @@ export function useDraftEditor(projectId: string, templateId: string, draft: Tem
     }
   }
 
-  // Live preview: re-render shortly after the author stops typing.
+  // Live preview: first render at once, later ones shortly after the author stops typing.
+  const firstRun = useRef(true);
   // biome-ignore lint/correctness/useExhaustiveDependencies: only the inputs below should retrigger
   useEffect(() => {
-    const timer = setTimeout(() => void runPreview(false), 800);
+    const timer = setTimeout(() => void runPreview(false), firstRun.current ? 0 : 800);
+    firstRun.current = false;
     return () => clearTimeout(timer);
   }, [form.source, form.schemaText, form.sampleText, form.renderTimeoutSec]);
 
@@ -207,6 +219,7 @@ export function useDraftEditor(projectId: string, templateId: string, draft: Tem
     save: saveOnly,
     publish,
     preview,
+    problem,
     previewing: previewMutation.isPending,
     runPreview: () => runPreview(true),
     fillSample: () => {

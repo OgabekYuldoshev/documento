@@ -1,0 +1,46 @@
+// Draggable divider: hover/focus/drag affordance and the grip line are pseudo-element styling.
+
+.root {
+  display: grid;
+  height: 100%;
+  min-height: 0;
+}
+
+.stacked {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mantine-spacing-md);
+  height: auto;
+}
+
+.pane {
+  min-width: 0;
+  min-height: 0;
+}
+
+.divider {
+  position: relative;
+  cursor: col-resize;
+  touch-action: none;
+  outline: none;
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0 4px;
+    border-radius: 2px;
+    background: transparent;
+    transition: background-color 120ms ease;
+  }
+
+  @media (hover: hover) {
+    &:hover::after {
+      background: var(--app-border);
+    }
+  }
+
+  &:focus-visible::after,
+  &[data-dragging]::after {
+    background: var(--mantine-color-brand-filled);
+  }
+}

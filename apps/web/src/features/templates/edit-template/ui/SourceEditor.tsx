@@ -1,21 +1,30 @@
 import { EditorView } from "@codemirror/view";
 import { useComputedColorScheme } from "@mantine/core";
-import CodeMirror from "@uiw/react-codemirror";
+import CodeMirror, { type ReactCodeMirrorRef } from "@uiw/react-codemirror";
+import type { Ref } from "react";
+import { EditorFrame } from "./EditorFrame";
+import { editorTheme } from "./editor-theme";
 
-type Props = { value: string; onChange: (value: string) => void };
+type Props = {
+  value: string;
+  onChange: (value: string) => void;
+  editorRef?: Ref<ReactCodeMirrorRef>;
+};
 
-export function SourceEditor({ value, onChange }: Props) {
+export function SourceEditor({ value, onChange, editorRef }: Props) {
   const scheme = useComputedColorScheme("light");
   return (
-    <CodeMirror
-      value={value}
-      onChange={onChange}
-      theme={scheme}
-      minHeight="420px"
-      maxHeight="70dvh"
-      extensions={[EditorView.lineWrapping]}
-      basicSetup={{ foldGutter: false, autocompletion: false }}
-      aria-label="Typst kodi"
-    />
+    <EditorFrame>
+      <CodeMirror
+        ref={editorRef}
+        value={value}
+        onChange={onChange}
+        theme={scheme}
+        height="100%"
+        extensions={[EditorView.lineWrapping, editorTheme]}
+        basicSetup={{ foldGutter: false, autocompletion: false }}
+        aria-label="Typst kodi"
+      />
+    </EditorFrame>
   );
 }

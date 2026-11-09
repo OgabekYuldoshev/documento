@@ -21,6 +21,7 @@ export type RenderInput = {
   timeoutSec: number;
   memoryMb?: number;
   strictWarnings?: boolean;
+  format?: "pdf" | "svg";
   maxPayloadBytes?: number;
   assets?: Parameters<typeof runTypst>[0]["assets"];
   /**
@@ -52,6 +53,7 @@ export type FileResult =
   | {
       ok: true;
       pdfPath: string;
+      svgPaths: string[];
       bytes: number;
       pages: number;
       durationMs: number;
@@ -99,6 +101,7 @@ export async function renderToFile(input: RenderInput): Promise<FileResult> {
         timeoutSec: input.timeoutSec,
         memoryMb,
         strictWarnings: input.strictWarnings,
+        format: input.format,
         assets: input.assets,
       }),
     );
@@ -117,6 +120,7 @@ export async function renderToFile(input: RenderInput): Promise<FileResult> {
   return {
     ok: true,
     pdfPath: result.pdfPath,
+    svgPaths: result.svgPaths,
     bytes: result.bytes,
     pages: result.pages,
     durationMs: result.durationMs,
@@ -138,6 +142,28 @@ export async function renderPreview(input: RenderInput): Promise<PreviewResult> 
       pages: result.pages,
       durationMs: result.durationMs,
     };
+  } finally {
+    await result.dispose();
+  }
+}
+
+export type SvgPreviewResult =
+  | { ok: true; svgPages: string[]; pages: number; durationMs: number }
+  | RenderFailure;
+
+/**
+ * Editor preview: one SVG per page (Typst's own vector output, glyphs as paths so no fonts are
+ * needed in the browser). The PDF pipeline used by publish and the API is untouched.
+ */
+export async function renderPreviewSvg(input: RenderInput): Promise<SvgPreviewResult> {
+  const result = await renderToFile({ ...input, format: "svg" });
+  if (!result.ok) return result;
+  try {
+    if (result.bytes > PREVIEW_MAX_BYTES) {
+      return tooLarge("Preview uchun juda katta (20 MB dan oshdi)");
+    }
+    const svgPages = await Promise.all(result.svgPaths.map((p) => readFile(p, "utf8")));
+    return { ok: true, svgPages, pages: result.pages, durationMs: result.durationMs };
   } finally {
     await result.dispose();
   }

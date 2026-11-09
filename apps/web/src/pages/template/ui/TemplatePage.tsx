@@ -1,10 +1,8 @@
-import { Anchor, Breadcrumbs, Center, Loader, Text } from "@mantine/core";
+import { Center, Loader, Text } from "@mantine/core";
 import { useQuery } from "@tanstack/react-query";
-import { Link, useParams } from "react-router";
+import { useParams } from "react-router";
 import { TemplateEditor } from "@/features/templates/edit-template";
 import { trpc } from "@/shared/api";
-import { ROUTES } from "@/shared/config";
-import { PageHeader } from "@/shared/ui";
 
 export function TemplatePage() {
   const { projectId = "", templateId = "" } = useParams();
@@ -27,20 +25,13 @@ export function TemplatePage() {
   }
 
   return (
-    <>
-      <Breadcrumbs mb="sm">
-        <Anchor component={Link} to={ROUTES.projects} size="sm">
-          Project'lar
-        </Anchor>
-        <Anchor component={Link} to={ROUTES.project(projectId)} size="sm">
-          {project.data.name}
-        </Anchor>
-      </Breadcrumbs>
-      <PageHeader
-        title={info.data.template.name}
-        description={info.data.template.description ?? undefined}
-      />
-      <TemplateEditor projectId={projectId} templateId={templateId} />
-    </>
+    <TemplateEditor
+      projectId={projectId}
+      templateId={templateId}
+      projectName={project.data.name}
+      templateName={info.data.template.name}
+      description={info.data.template.description ?? undefined}
+      currentNumber={info.data.current?.number}
+    />
   );
 }

@@ -8,7 +8,7 @@ import {
 import { router } from "../../trpc/init";
 import { assetsService } from "../assets/assets.service";
 import { projectProcedure } from "../projects/project-procedure";
-import { renderPreview } from "../render/render.service";
+import { renderPreviewSvg } from "../render/render.service";
 import { templateProcedure } from "./template-procedure";
 import { templatesService } from "./templates.service";
 
@@ -38,9 +38,9 @@ export const templatesRouter = router({
     }),
   ),
 
-  /** Renders unsaved editor state; the PDF comes back inline (<= 20 MB) as base64. */
+  /** Renders unsaved editor state; pages come back inline (<= 20 MB total) as SVG strings. */
   preview: templateProcedure.input(previewSchema).mutation(async ({ ctx, input }) => {
-    const result = await renderPreview({
+    const result = await renderPreviewSvg({
       source: input.source,
       schema: input.schema,
       data: input.sampleData,
@@ -51,7 +51,7 @@ export const templatesRouter = router({
     if (!result.ok) return result;
     return {
       ok: true as const,
-      pdfBase64: result.pdf.toString("base64"),
+      svgPages: result.svgPages,
       pages: result.pages,
       durationMs: result.durationMs,
     };

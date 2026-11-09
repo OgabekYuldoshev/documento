@@ -31,7 +31,7 @@ export const sampleTextFromSchema = (text: string): string | null => {
 export function SchemaEditor({ value, onChange }: Props) {
   const issues = useMemo(() => lintSchemaText(value), [value]);
   return (
-    <Stack gap="xs">
+    <Stack gap="xs" h="100%">
       <JsonEditor value={value} onChange={onChange} label="JSON Schema" />
       {issues.length > 0 ? (
         <Alert color="red" variant="light" title="Schemada xatolar bor">

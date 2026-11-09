@@ -1,16 +1,35 @@
-import { Button, Center, Divider, Loader, Stack, Text, Title } from "@mantine/core";
+import { Badge, Box, Button, Center, Loader, Stack, Text } from "@mantine/core";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { getErrorMessage, trpc } from "@/shared/api";
+import { ROUTES } from "@/shared/config";
 import { notify } from "@/shared/lib";
 import { invalidateTemplateQueries } from "../../invalidate";
 import { ApiSnippets } from "./ApiSnippets";
 import { DraftForm } from "./DraftForm";
 import { VersionHistory } from "./VersionHistory";
+import { WorkspaceFrame, type WorkspaceTab } from "./WorkspaceFrame";
 
-type Props = { projectId: string; templateId: string };
+type Props = {
+  projectId: string;
+  templateId: string;
+  projectName: string;
+  templateName: string;
+  description?: string;
+  /** Number of the published version, when there is one. */
+  currentNumber?: number | null;
+};
 
-export function TemplateEditor({ projectId, templateId }: Props) {
+const PANEL_WIDTH = 960;
+
+export function TemplateEditor({
+  projectId,
+  templateId,
+  projectName,
+  templateName,
+  description,
+  currentNumber,
+}: Props) {
   const ids = { projectId, templateId };
   const { data: draft, isPending } = useQuery(trpc.templates.draft.queryOptions(ids));
   // Bumped after a restore so the form remounts with the restored content.
@@ -30,30 +49,78 @@ export function TemplateEditor({ projectId, templateId }: Props) {
     );
   }
 
+  const breadcrumbs = [
+    { label: "Project'lar", to: ROUTES.projects },
+    { label: projectName, to: ROUTES.project(projectId) },
+  ];
+
+  const extraTabs: WorkspaceTab[] = [
+    {
+      value: "api",
+      label: "API",
+      content: (
+        <Box maw={PANEL_WIDTH}>
+          <ApiSnippets {...ids} />
+        </Box>
+      ),
+    },
+    {
+      value: "versions",
+      label: "Versiyalar",
+      content: (
+        <Box maw={PANEL_WIDTH}>
+          <VersionHistory {...ids} onRestored={() => setEpoch((n) => n + 1)} />
+        </Box>
+      ),
+    },
+  ];
+
+  if (draft) {
+    return (
+      <DraftForm
+        key={`${draft.id}:${epoch}`}
+        {...ids}
+        draft={draft}
+        title={templateName}
+        description={description}
+        breadcrumbs={breadcrumbs}
+        extraTabs={extraTabs}
+      />
+    );
+  }
+
   return (
-    <Stack gap="xl">
-      {draft ? (
-        <DraftForm key={`${draft.id}:${epoch}`} {...ids} draft={draft} />
-      ) : (
-        <Stack align="flex-start" gap="xs">
-          <Text c="dimmed" size="sm">
-            Qoralama yo'q: joriy versiya o'zgarmas. Tahrirlash uchun undan yangi qoralama yarating.
-          </Text>
-          <Button loading={start.isPending} onClick={() => start.mutate(ids)}>
-            Tahrirlashni boshlash
-          </Button>
-        </Stack>
-      )}
-      <Divider />
-      <Stack gap="sm">
-        <Title order={4}>API orqali ishlatish</Title>
-        <ApiSnippets {...ids} />
-      </Stack>
-      <Divider />
-      <Stack gap="sm">
-        <Title order={4}>Versiyalar</Title>
-        <VersionHistory {...ids} onRestored={() => setEpoch((n) => n + 1)} />
-      </Stack>
-    </Stack>
+    <WorkspaceFrame
+      breadcrumbs={breadcrumbs}
+      title={templateName}
+      description={description}
+      badges={
+        currentNumber ? (
+          <Badge color="teal" variant="light">
+            v{currentNumber} faol
+          </Badge>
+        ) : undefined
+      }
+      actions={
+        <Button loading={start.isPending} onClick={() => start.mutate(ids)}>
+          Tahrirlashni boshlash
+        </Button>
+      }
+      tabs={[
+        {
+          value: "editor",
+          label: "Muharrir",
+          content: (
+            <Stack align="flex-start" gap="xs" maw={PANEL_WIDTH}>
+              <Text c="dimmed" size="sm">
+                Qoralama yo'q: joriy versiya o'zgarmas. Tahrirlash uchun undan yangi qoralama
+                yarating.
+              </Text>
+            </Stack>
+          ),
+        },
+        ...extraTabs,
+      ]}
+    />
   );
 }

@@ -1,6 +1,6 @@
 import { spawn, spawnSync } from "node:child_process";
 import { createReadStream, existsSync } from "node:fs";
-import { copyFile, mkdir, mkdtemp, rm, stat, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, mkdtemp, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { env } from "../../config/env";
@@ -17,12 +17,17 @@ export type RenderJob = {
   extraFiles?: { name: string; path?: string; bytes?: Buffer }[];
   /** Treat Typst warnings (e.g. unknown font) as failures. */
   strictWarnings?: boolean;
+  /** `svg` writes one SVG per page (editor preview); default `pdf`. */
+  format?: "pdf" | "svg";
 };
 
 export type RenderResult =
   | {
       status: "ok";
+      /** PDF output; empty string for `svg` jobs. */
       pdfPath: string;
+      /** Page SVGs in page order (`svg` jobs only). */
+      svgPaths: string[];
       bytes: number;
       pages: number;
       durationMs: number;
@@ -67,6 +72,15 @@ export async function countPages(path: string): Promise<number> {
   return pages;
 }
 
+/** `out-<n>.svg` files in page order (numeric, not lexical: page 10 follows page 9). */
+async function collectSvgPages(dir: string): Promise<string[]> {
+  const names = (await readdir(dir)).flatMap((name) => {
+    const m = /^out-(\d+)\.svg$/.exec(name);
+    return m ? [{ name, n: Number(m[1]) }] : [];
+  });
+  return names.sort((a, b) => a.n - b.n).map((f) => join(dir, f.name));
+}
+
 export async function runTypst(job: RenderJob): Promise<RenderResult> {
   const dir = await mkdtemp(join(tmpdir(), "documento-render-"));
   const dispose = () => rm(dir, { recursive: true, force: true });
@@ -88,6 +102,7 @@ export async function runTypst(job: RenderJob): Promise<RenderResult> {
     ]);
   }
 
+  const svg = job.format === "svg";
   const pdfPath = join(dir, "out.pdf");
   const empty = join(dir, ".empty");
   await mkdir(empty);
@@ -126,7 +141,7 @@ export async function runTypst(job: RenderJob): Promise<RenderResult> {
     "--diagnostic-format",
     "short",
     join(dir, "main.typ"),
-    pdfPath,
+    ...(svg ? ["--format", "svg", join(dir, "out-{p}.svg")] : [pdfPath]),
   ];
   const limited = hasPrlimit();
   const cmd = limited ? PRLIMIT : env.TYPST_BIN;
@@ -201,15 +216,31 @@ export async function runTypst(job: RenderJob): Promise<RenderResult> {
   }
   const hasError = outcome.code !== 0 || diagnostics.some((d) => d.severity === "error");
   const strictFail = job.strictWarnings && diagnostics.some((d) => d.severity === "warning");
-  if (hasError || strictFail || !existsSync(pdfPath)) {
+  const svgPaths = svg ? await collectSvgPages(dir) : [];
+  const produced = svg ? svgPaths.length > 0 : existsSync(pdfPath);
+  if (hasError || strictFail || !produced) {
     const fallback: Diagnostic[] = diagnostics.length
       ? diagnostics
       : [{ severity: "error", message: "Kompilyatsiya xatosi" }];
     return fail("error", fallback);
   }
+  if (svg) {
+    const sizes = await Promise.all(svgPaths.map(async (p) => (await stat(p)).size));
+    return {
+      status: "ok",
+      pdfPath: "",
+      svgPaths,
+      bytes: sizes.reduce((a, b) => a + b, 0),
+      pages: svgPaths.length,
+      durationMs: elapsed(),
+      diagnostics,
+      dispose,
+    };
+  }
   return {
     status: "ok",
     pdfPath,
+    svgPaths: [],
     bytes: (await stat(pdfPath)).size,
     pages: await countPages(pdfPath),
     durationMs: elapsed(),

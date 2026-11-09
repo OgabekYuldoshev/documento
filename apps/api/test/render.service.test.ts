@@ -5,7 +5,11 @@ import { join } from "node:path";
 import type { TemplateSchema } from "@documento/shared";
 import { describe, expect, it } from "vitest";
 import { env } from "../src/config/env";
-import { renderPreview, runPublishDryRun } from "../src/modules/render/render.service";
+import {
+  renderPreview,
+  renderPreviewSvg,
+  runPublishDryRun,
+} from "../src/modules/render/render.service";
 import { solidPng } from "./png";
 
 const hasTypst = spawnSync(env.TYPST_BIN, ["--version"]).status === 0;
@@ -34,6 +38,33 @@ describe.skipIf(!hasTypst)("render service", () => {
       expect(r.pdf.subarray(0, 4).toString()).toBe("%PDF");
       expect(r.pages).toBe(1);
     }
+  });
+
+  it("renders one SVG per page for the editor preview, in page order", async () => {
+    const paged =
+      '#let data = json("data.json")\n#data.name\n#pagebreak()\nIkkinchi\n#pagebreak()\nUchinchi';
+    const r = await renderPreviewSvg({
+      source: paged,
+      schema,
+      data: { name: "Ali" },
+      timeoutSec: 20,
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.pages).toBe(3);
+      expect(r.svgPages).toHaveLength(3);
+      for (const page of r.svgPages) expect(page).toContain("<svg");
+    }
+  });
+
+  it("reports Typst errors for the SVG preview too", async () => {
+    const r = await renderPreviewSvg({
+      source: "#let x = (",
+      schema,
+      data: { name: "Ali" },
+      timeoutSec: 20,
+    });
+    expect(r).toMatchObject({ ok: false, kind: "compile" });
   });
 
   it("returns validation errors instead of crashing Typst", async () => {
