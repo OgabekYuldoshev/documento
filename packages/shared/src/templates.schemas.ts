@@ -44,3 +44,12 @@ export const publishSchema = z.object({
 });
 
 export const restoreVersionSchema = z.object({ projectId: id, templateId: id, versionId: id });
+
+export const previewSchema = z.object({
+  projectId: id,
+  templateId: id,
+  source: z.string().max(TEMPLATE_SOURCE_MAX_BYTES, "Kod juda katta"),
+  schema: templateSchemaSchema,
+  sampleData: z.record(z.string(), z.unknown()),
+  renderTimeoutSec: z.number().int().min(1).max(TEMPLATE_TIMEOUT_MAX_SEC),
+});

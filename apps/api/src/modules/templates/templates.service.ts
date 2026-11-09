@@ -8,9 +8,11 @@ import {
   templateSchemaSchema,
 } from "@documento/shared";
 import { TRPCError } from "@trpc/server";
+import { env } from "../../config/env";
 import { db } from "../../db/client";
 import type { Project, Template, TemplateVersion } from "../../db/schema";
 import { slugify } from "../projects/slug";
+import { runPublishDryRun } from "../render/render.service";
 import { templatesRepository as repo } from "./templates.repository";
 import { validateData } from "./validate-data";
 
@@ -23,8 +25,11 @@ const err = (code: "NOT_FOUND" | "CONFLICT" | "BAD_REQUEST", message: string) =>
 
 const noDraft = () => err("CONFLICT", "Qoralama yo'q. Avval tahrirlashni boshlang");
 
-/** Placeholder for M3: compile the version with Typst (dry-run) and throw on errors/warnings. */
-export async function publishChecks(_version: TemplateVersion): Promise<void> {}
+/** Compile the version with its sample data (errors and warnings block publishing). */
+export async function publishChecks(version: TemplateVersion): Promise<void> {
+  if (env.PUBLISH_DRY_RUN === "off") return;
+  await runPublishDryRun(version);
+}
 
 async function uniqueSlug(projectId: string, name: string) {
   const base = slugify(name);

@@ -9,6 +9,7 @@ const envSchema = z.object({
   DATABASE_URL: z.string().default("file:./data/app.db"),
   PDF_RETENTION_DAYS: z.coerce.number().int().min(1).default(1),
   PDF_RETENTION_MAX_DAYS: z.coerce.number().int().min(1).default(30),
+  PUBLISH_DRY_RUN: z.enum(["on", "off"]).default("on"),
   TYPST_BIN: z.string().default("typst"),
   FONTS_DIR: z.string().default("./fonts"),
   RENDER_MEMORY_BUDGET_MB: z.coerce.number().int().min(256).default(2560),

@@ -1,11 +1,13 @@
 import {
   createTemplateSchema,
+  previewSchema,
   publishSchema,
   restoreVersionSchema,
   saveDraftSchema,
 } from "@documento/shared";
 import { router } from "../../trpc/init";
 import { projectProcedure } from "../projects/project-procedure";
+import { renderPreview } from "../render/render.service";
 import { templateProcedure } from "./template-procedure";
 import { templatesService } from "./templates.service";
 
@@ -32,6 +34,23 @@ export const templatesRouter = router({
       acknowledgeBreaking: input.acknowledgeBreaking,
     }),
   ),
+
+  /** Renders unsaved editor state; the PDF comes back inline (<= 20 MB) as base64. */
+  preview: templateProcedure.input(previewSchema).mutation(async ({ input }) => {
+    const result = await renderPreview({
+      source: input.source,
+      schema: input.schema,
+      data: input.sampleData,
+      timeoutSec: input.renderTimeoutSec,
+    });
+    if (!result.ok) return result;
+    return {
+      ok: true as const,
+      pdfBase64: result.pdf.toString("base64"),
+      pages: result.pages,
+      durationMs: result.durationMs,
+    };
+  }),
 
   versions: templateProcedure.query(({ ctx }) => templatesService.versions(ctx.template)),
 
