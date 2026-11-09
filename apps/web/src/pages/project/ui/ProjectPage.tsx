@@ -1,33 +1,19 @@
-import { Button, Center, Group, Loader, Paper, Stack, Tabs, Text, Title } from "@mantine/core";
+import { Button, Center, Group, Loader, Stack, Tabs, Text, Title } from "@mantine/core";
+import { IconArchive } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
-import { Link, useParams } from "react-router";
-import { CreateApiKeyButton } from "@/features/api-keys/create-api-key";
+import { Link, useNavigate, useParams } from "react-router";
+import { ArchiveProjectButton } from "@/features/projects/archive-project";
 import { ProjectSettingsForm } from "@/features/projects/update-project";
 import { trpc } from "@/shared/api";
 import { ROUTES } from "@/shared/config";
-import { formatDate } from "@/shared/lib";
-import { PageHeader } from "@/shared/ui";
+import { PageHeader, SettingsSection } from "@/shared/ui";
 import { ApiKeysTable } from "@/widgets/api-keys-table";
 import { GenerationsTable } from "@/widgets/generations-table";
 import { TemplatesGrid } from "@/widgets/templates-grid";
 
-const DEFAULT_RETENTION_DAYS_LABEL = "Standart";
-
-function Field({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <Text size="xs" c="dimmed">
-        {label}
-      </Text>
-      <Text size="sm" fw={500}>
-        {value}
-      </Text>
-    </div>
-  );
-}
-
 export function ProjectPage() {
   const { projectId = "" } = useParams();
+  const navigate = useNavigate();
   const {
     data: project,
     isPending,
@@ -63,7 +49,6 @@ export function ProjectPage() {
           <Tabs.Tab value="templates">Shablonlar</Tabs.Tab>
           <Tabs.Tab value="documents">Hujjatlar</Tabs.Tab>
           <Tabs.Tab value="keys">API keylar</Tabs.Tab>
-          <Tabs.Tab value="overview">Umumiy ma'lumot</Tabs.Tab>
           <Tabs.Tab value="settings">Sozlamalar</Tabs.Tab>
         </Tabs.List>
         <Tabs.Panel value="templates">
@@ -73,29 +58,43 @@ export function ProjectPage() {
           <GenerationsTable projectId={project.id} />
         </Tabs.Panel>
         <Tabs.Panel value="keys">
-          <Group justify="flex-end" mb="md">
-            <CreateApiKeyButton projectId={project.id} />
-          </Group>
           <ApiKeysTable projectId={project.id} />
         </Tabs.Panel>
-        <Tabs.Panel value="overview">
-          <Paper withBorder p="lg" maw={520}>
-            <Group gap="xl" align="flex-start">
-              <Field label="Slug" value={project.slug} />
-              <Field label="Yaratilgan" value={formatDate(project.createdAt)} />
-              <Field
-                label="PDF saqlash muddati"
-                value={
-                  project.retentionDays === null
-                    ? DEFAULT_RETENTION_DAYS_LABEL
-                    : `${project.retentionDays} kun`
-                }
-              />
-            </Group>
-          </Paper>
-        </Tabs.Panel>
         <Tabs.Panel value="settings">
-          <ProjectSettingsForm key={project.updatedAt.getTime()} project={project} />
+          <Stack gap="md" maw={960}>
+            <ProjectSettingsForm key={project.updatedAt.getTime()} project={project} />
+            <SettingsSection
+              danger
+              title="Xavfli hudud"
+              description="Qaytarib bo'lmaydigan yoki ehtiyotkorlik talab qiladigan amallar."
+            >
+              <Group justify="space-between" wrap="nowrap" align="center">
+                <div>
+                  <Text size="sm" fw={500}>
+                    Projectni arxivlash
+                  </Text>
+                  <Text size="sm" c="dimmed">
+                    Project ro'yxatdan yo'qoladi, shablonlari va API keylari ishlamay qoladi.
+                  </Text>
+                </div>
+                <ArchiveProjectButton
+                  id={project.id}
+                  name={project.name}
+                  onArchived={() => navigate(ROUTES.projects)}
+                  renderTrigger={(open) => (
+                    <Button
+                      color="red"
+                      variant="light"
+                      leftSection={<IconArchive size={16} />}
+                      onClick={open}
+                    >
+                      Arxivlash
+                    </Button>
+                  )}
+                />
+              </Group>
+            </SettingsSection>
+          </Stack>
         </Tabs.Panel>
       </Tabs>
     </>
