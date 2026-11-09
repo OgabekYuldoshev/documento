@@ -1,12 +1,14 @@
 import { Button, Center, Group, Loader, Paper, Stack, Tabs, Text, Title } from "@mantine/core";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router";
+import { CreateApiKeyButton } from "@/features/api-keys/create-api-key";
 import { ProjectSettingsForm } from "@/features/projects/update-project";
 import { CreateTemplateButton } from "@/features/templates/create-template";
 import { trpc } from "@/shared/api";
 import { ROUTES } from "@/shared/config";
 import { formatDate } from "@/shared/lib";
 import { PageHeader } from "@/shared/ui";
+import { ApiKeysTable } from "@/widgets/api-keys-table";
 import { TemplatesTable } from "@/widgets/templates-table";
 
 const DEFAULT_RETENTION_DAYS_LABEL = "Standart";
@@ -59,6 +61,7 @@ export function ProjectPage() {
       <Tabs defaultValue="templates" keepMounted={false}>
         <Tabs.List mb="lg">
           <Tabs.Tab value="templates">Shablonlar</Tabs.Tab>
+          <Tabs.Tab value="keys">API keylar</Tabs.Tab>
           <Tabs.Tab value="overview">Umumiy ma'lumot</Tabs.Tab>
           <Tabs.Tab value="settings">Sozlamalar</Tabs.Tab>
         </Tabs.List>
@@ -67,6 +70,12 @@ export function ProjectPage() {
             <CreateTemplateButton projectId={project.id} />
           </Group>
           <TemplatesTable projectId={project.id} />
+        </Tabs.Panel>
+        <Tabs.Panel value="keys">
+          <Group justify="flex-end" mb="md">
+            <CreateApiKeyButton projectId={project.id} />
+          </Group>
+          <ApiKeysTable projectId={project.id} />
         </Tabs.Panel>
         <Tabs.Panel value="overview">
           <Paper withBorder p="lg" maw={520}>
