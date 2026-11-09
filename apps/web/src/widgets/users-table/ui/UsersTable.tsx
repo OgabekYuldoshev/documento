@@ -28,7 +28,7 @@ export function UsersTable() {
     id !== me?.id && (me?.role === "superadmin" ? role !== "superadmin" : role === "user");
 
   return (
-    <Paper withBorder radius="md">
+    <Paper withBorder radius="md" style={{ overflow: "hidden" }}>
       <Table.ScrollContainer minWidth={720}>
         <Table verticalSpacing="sm" highlightOnHover>
           <Table.Thead>

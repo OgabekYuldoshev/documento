@@ -1,3 +1,4 @@
+@import "@fontsource-variable/inter";
 @import "@mantine/core/styles.css";
 @import "@mantine/notifications/styles.css";
 
@@ -9,4 +10,10 @@ body,
 
 body {
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Prevent a white/dark flash on first paint; Mantine takes over after hydration. */
+:root[data-mantine-color-scheme="dark"] {
+  color-scheme: dark;
 }

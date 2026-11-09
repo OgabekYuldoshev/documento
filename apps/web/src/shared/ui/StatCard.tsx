@@ -9,23 +9,23 @@ type StatCardProps = {
   loading?: boolean;
 };
 
-export function StatCard({ label, value, icon, color = "indigo", loading }: StatCardProps) {
+export function StatCard({ label, value, icon, color = "brand", loading }: StatCardProps) {
   return (
-    <Paper withBorder p="md" radius="md">
-      <Group justify="space-between" wrap="nowrap">
+    <Paper withBorder p="lg" shadow="xs">
+      <Group justify="space-between" wrap="nowrap" align="flex-start">
         <div>
-          <Text c="dimmed" tt="uppercase" fw={700} fz="xs">
+          <Text c="dimmed" fw={600} fz="sm">
             {label}
           </Text>
           {loading ? (
-            <Skeleton h={32} w={60} mt={4} />
+            <Skeleton h={34} w={64} mt={8} />
           ) : (
-            <Text fw={700} fz={28} lh={1.2} mt={4}>
+            <Text fw={700} fz={32} lh={1.1} mt={8} style={{ letterSpacing: "-0.02em" }}>
               {value ?? 0}
             </Text>
           )}
         </div>
-        <ThemeIcon variant="light" color={color} size={48} radius="md">
+        <ThemeIcon variant="light" color={color} size={44} radius="md">
           {icon}
         </ThemeIcon>
       </Group>

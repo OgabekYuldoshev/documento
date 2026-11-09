@@ -1,0 +1,37 @@
+// Hover/open states on a custom trigger are not expressible with inline props.
+
+.trigger {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-sm);
+  width: 100%;
+  padding: var(--mantine-spacing-xs);
+  border-radius: var(--mantine-radius-md);
+  transition: background-color 120ms ease;
+
+  @media (hover: hover) {
+    &:hover {
+      background-color: light-dark(var(--mantine-color-gray-1), var(--mantine-color-dark-5));
+    }
+  }
+
+  &[data-expanded] {
+    background-color: light-dark(var(--mantine-color-gray-1), var(--mantine-color-dark-5));
+  }
+}
+
+.info {
+  flex: 1;
+  min-width: 0;
+}
+
+.ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chevron {
+  flex-shrink: 0;
+  color: var(--mantine-color-dimmed);
+}

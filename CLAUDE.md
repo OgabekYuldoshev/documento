@@ -9,7 +9,7 @@ Turborepo + pnpm monorepo. Two apps, one shared package, end-to-end type safety 
 | Area | Choice |
 |------|--------|
 | Monorepo | pnpm 11 workspaces + Turborepo 2, Node >= 24, TypeScript 7 (strict) |
-| Web (`apps/web`) | React 19, Vite, TypeScript, **Mantine 9** (light + dark theme), React Router (data router), TanStack Query, **Feature-Sliced Design** |
+| Web (`apps/web`) | React 19, Vite, TypeScript, **Mantine 9** (light + dark theme, SCSS modules for special cases), React Router (data router), TanStack Query, **Feature-Sliced Design** |
 | API (`apps/api`) | **Hono** (Node), **tRPC 11**, **Better Auth** (cookie sessions, admin plugin), **Drizzle ORM + SQLite** (libSQL driver), Zod |
 | Shared (`packages/shared`) | Zod schemas + role constants used by both apps |
 | Tooling | **Biome** (lint + format + import sort), **lefthook** git hooks, **commitlint** (Conventional Commits) |
@@ -109,6 +109,10 @@ Conventions:
 - Forms: `@mantine/form` + `zod4Resolver` with schema from `@documento/shared`.
 - Session: `entities/session` (`useSession()`, `getSessionUser()` for loaders). Login/logout invalidate/clear it.
 - UI is **Mantine only** (no other component libs, no ad-hoc CSS frameworks). Icons: `@tabler/icons-react`. Use theme tokens/props (`c="dimmed"`, `var(--mantine-color-*)`) so both color schemes work; never hardcode colors that break dark mode. Theme lives in `app/theme/index.ts`; color scheme is `auto` + `ColorSchemeToggle`.
+- **Styling:** Mantine props/theme first. Use a SCSS module **only** for specific cases props cannot express (hover/open states on custom triggers, layered/decorative visuals, pseudo-elements). Such a component gets its own kebab-case folder: `example-card/{example-card.tsx, example-card.module.scss, index.ts}` (`index.ts` re-exports). Plain components without custom CSS stay as a single file. Use `@mixin hover` / `light-dark()` / Mantine CSS vars inside SCSS so both schemes work. Examples: `widgets/app-shell/ui/sidebar-user-menu`, `pages/login/ui/document-preview`.
+- **Theme tokens** (`app/theme/`): `palette.ts` (brand / dark / gray scales), `index.ts` (theme + `cssVariablesResolver`). Semantic surface vars for both schemes: `--app-canvas` (page bg), `--app-surface` (cards, header, navbar, popups), `--app-subtle`, `--app-border`. Paper/Menu/Modal/Popover use `--app-surface`; do not hardcode hex in components. Font: Inter Variable.
+- **App shell** (`widgets/app-shell`, Mantine `layout="alt"`): full-height sidebar (logo, grouped nav with section captions, user block in footer with account menu) + top header over content only (sidebar collapse toggle persisted in localStorage, color-scheme toggle; no search/notifications by design). Nav is data-driven in `model/navigation.ts` (groups, `adminOnly`); adding a page = add a route + a nav item.
+- SCSS gotcha: sass runs before PostCSS, so `@mixin hover`/`$mantine-breakpoint-*` do not work in `.module.scss`; use `@media (hover: hover)` and literal `48em`. Mantine resets (e.g. UnstyledButton `border: 0`) can need `button.root` for specificity.
 - Components are small and reusable; shared primitives go to `shared/ui`, domain bits to the entity/feature that owns them.
 - Routes are constants in `shared/config/routes.ts`.
 

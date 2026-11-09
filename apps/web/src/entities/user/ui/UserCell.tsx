@@ -4,7 +4,7 @@ import { getInitials } from "@/shared/lib";
 export function UserCell({ name, email }: { name: string; email: string }) {
   return (
     <Group gap="sm" wrap="nowrap">
-      <Avatar color="initials" name={name} radius="xl" size={36}>
+      <Avatar radius="xl" size={36}>
         {getInitials(name)}
       </Avatar>
       <div>
