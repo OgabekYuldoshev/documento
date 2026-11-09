@@ -8,6 +8,7 @@ import { env } from "./config/env";
 import { auth } from "./lib/auth";
 import { assetsRoute } from "./modules/assets/assets.route";
 import { generationsRoute } from "./modules/generations/generations.route";
+import { v1 } from "./modules/v1/v1.route";
 import { createContext } from "./trpc/init";
 
 export const app = new Hono();
@@ -33,6 +34,8 @@ app.on(["GET", "POST"], "/api/auth/*", (c) => auth.handler(c.req.raw));
 
 app.route("/", assetsRoute);
 app.route("/", generationsRoute);
+// External integration API: key-authenticated, no CORS (server-to-server).
+app.route("/v1", v1);
 
 app.use(
   "/api/trpc/*",

@@ -11,17 +11,55 @@ import { jobKey, kick } from "./queue";
 
 type Actor = { id: string; role: Parameters<typeof projectsService.get>[0]["role"] };
 
+/** Who asked for the document: a signed-in user (UI) or an API key (+ optional idempotency key). */
+export type Origin =
+  | { source: "ui"; userId: string }
+  | { source: "api"; apiKeyId: string; idempotencyKey?: string };
+
 const notFound = (message: string) => new TRPCError({ code: "NOT_FOUND", message });
 
 /** The pdf key is internal; clients use the download route. */
 export const toPublicGeneration = ({ pdfKey: _key, ...rest }: Generation) => rest;
 
+function sameRequest(prior: Generation, input: { templateId: string; data: unknown }) {
+  const sha = createHash("sha256").update(JSON.stringify(input.data)).digest("hex");
+  if (prior.templateId !== input.templateId || prior.inputSha256 !== sha) {
+    throw new TRPCError({
+      code: "CONFLICT",
+      message: "Idempotency-Key boshqa so'rov bilan allaqachon ishlatilgan",
+    });
+  }
+  return prior;
+}
+
+type Full = Parameters<typeof repo.insert>[0];
+type Base = Omit<Full, "status">;
+type Rest = Pick<Full, "status"> & Partial<Full>;
+
+/** Insert; if a concurrent request with the same idempotency key won, return its row instead. */
+async function insertOrReplay(base: Base, rest: Rest): Promise<Generation> {
+  try {
+    return await repo.insert({ ...base, ...rest });
+  } catch (error) {
+    const unique = String((error as Error).cause ?? error).includes("UNIQUE");
+    if (unique && base.apiKeyId && base.idempotencyKey) {
+      const prior = await repo.findByIdempotency(base.apiKeyId, base.idempotencyKey);
+      if (prior) return prior;
+    }
+    throw error;
+  }
+}
+
 export const generationsService = {
   async create(
-    actor: Actor,
+    origin: Origin,
     project: Project,
     input: { templateId: string; data: Record<string, unknown>; versionNumber?: number },
   ) {
+    if (origin.source === "api" && origin.idempotencyKey) {
+      const prior = await repo.findByIdempotency(origin.apiKeyId, origin.idempotencyKey);
+      if (prior) return toPublicGeneration(sameRequest(prior, input));
+    }
     const template = await templatesRepository.findTemplate(input.templateId);
     if (!template || template.projectId !== project.id || template.archivedAt) {
       throw notFound("Shablon topilmadi");
@@ -43,8 +81,10 @@ export const generationsService = {
       projectId: project.id,
       templateId: template.id,
       templateVersionId: version.id,
-      createdBy: actor.id,
-      source: "ui" as const,
+      createdBy: origin.source === "ui" ? origin.userId : null,
+      source: origin.source,
+      apiKeyId: origin.source === "api" ? origin.apiKeyId : null,
+      idempotencyKey: origin.source === "api" ? (origin.idempotencyKey ?? null) : null,
       inputSha256: createHash("sha256").update(JSON.stringify(input.data)).digest("hex"),
       queuedAt: new Date(),
     };
@@ -55,8 +95,7 @@ export const generationsService = {
     });
     if (!checked.ok) {
       const now = new Date();
-      const row = await repo.insert({
-        ...base,
+      const row = await insertOrReplay(base, {
         status: "validation_error",
         errorJson: { ok: false, kind: "validation", errors: checked.errors },
         finishedAt: now,
@@ -66,8 +105,9 @@ export const generationsService = {
     }
 
     await storage.put(jobKey(base.id), Buffer.from(JSON.stringify(checked.data)));
-    const row = await repo.insert({ ...base, status: "queued" });
-    kick();
+    const row = await insertOrReplay(base, { status: "queued" });
+    if (row.id === base.id) kick();
+    else await storage.remove(jobKey(base.id)); // lost an idempotency race: drop our copy
     return toPublicGeneration(row);
   },
 

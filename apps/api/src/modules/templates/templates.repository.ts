@@ -36,6 +36,15 @@ export const templatesRepository = {
     return first(await x.select().from(template).where(eq(template.id, id)).limit(1));
   },
 
+  async findBySlug(projectId: string, slug: string) {
+    const [row] = await db
+      .select()
+      .from(template)
+      .where(and(eq(template.projectId, projectId), eq(template.slug, slug)))
+      .limit(1);
+    return row ?? null;
+  },
+
   listByProject(projectId: string) {
     return db
       .select()

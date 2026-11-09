@@ -13,6 +13,7 @@ const envSchema = z.object({
   STORAGE_DIR: z.string().default("./data/storage"),
   ASSET_MAX_MB: z.coerce.number().positive().default(10),
   RENDER_CONCURRENCY: z.coerce.number().int().min(1).default(4),
+  SYNC_WAIT_MS: z.coerce.number().int().min(0).max(60000).default(25000),
   TYPST_BIN: z.string().default("typst"),
   FONTS_DIR: z.string().default("./fonts"),
   RENDER_MEMORY_BUDGET_MB: z.coerce.number().int().min(256).default(2560),

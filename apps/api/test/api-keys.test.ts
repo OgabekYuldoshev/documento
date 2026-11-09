@@ -30,8 +30,8 @@ describe("key format", () => {
   it.each([
     "",
     "dk_live_",
-    "dk_test_12345678_" + "a".repeat(48),
-    "dk_live_1234567g_" + "a".repeat(48),
+    `dk_test_12345678_${"a".repeat(48)}`,
+    `dk_live_1234567g_${"a".repeat(48)}`,
     `dk_live_12345678_${"a".repeat(47)}`,
   ])("rejects malformed key %j", (raw) => {
     expect(parseKeyPrefix(raw)).toBeNull();

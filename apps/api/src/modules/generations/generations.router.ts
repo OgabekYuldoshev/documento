@@ -37,7 +37,11 @@ export const generationsRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const created = await generationsService.create(ctx.actor, ctx.project, input);
+      const created = await generationsService.create(
+        { source: "ui", userId: ctx.actor.id },
+        ctx.project,
+        input,
+      );
       if (input.waitMs === 0) return created;
       const done = await generationsService.waitFor(created.id, input.waitMs);
       return done ? toPublicGeneration(done) : created;

@@ -19,6 +19,15 @@ export const generationsRepository = {
     return row ?? null;
   },
 
+  async findByIdempotency(apiKeyId: string, idempotencyKey: string) {
+    const [row] = await db
+      .select()
+      .from(generation)
+      .where(and(eq(generation.apiKeyId, apiKeyId), eq(generation.idempotencyKey, idempotencyKey)))
+      .limit(1);
+    return row ?? null;
+  },
+
   /** Oldest queued job, atomically flipped to `processing`; null when the queue is empty. */
   async claimNext() {
     for (let attempt = 0; attempt < 5; attempt++) {
