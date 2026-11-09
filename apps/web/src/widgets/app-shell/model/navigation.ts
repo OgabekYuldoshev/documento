@@ -1,4 +1,4 @@
-import { IconLayoutDashboard, IconUsers } from "@tabler/icons-react";
+import { IconFolders, IconLayoutDashboard, IconUsers } from "@tabler/icons-react";
 import type { ComponentType } from "react";
 import { ROUTES } from "@/shared/config";
 
@@ -18,7 +18,10 @@ export type NavGroup = {
 /** Single source of truth for the sidebar and the ⌘K search. Add new pages here. */
 export const NAVIGATION: NavGroup[] = [
   {
-    items: [{ to: ROUTES.dashboard, label: "Bosh sahifa", icon: IconLayoutDashboard }],
+    items: [
+      { to: ROUTES.dashboard, label: "Bosh sahifa", icon: IconLayoutDashboard },
+      { to: ROUTES.projects, label: "Project'lar", icon: IconFolders },
+    ],
   },
   {
     title: "Boshqaruv",

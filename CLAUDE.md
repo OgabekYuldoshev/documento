@@ -36,6 +36,7 @@ cp apps/api/.env.example apps/api/.env    # then set BETTER_AUTH_SECRET (>=32 ch
 pnpm db:setup        # migrate + seed first superadmin (idempotent)
 pnpm dev             # web http://localhost:3000, api http://localhost:3001
 pnpm check-types     # tsc across all packages
+pnpm test            # vitest (apps/api, in-memory SQLite, migrations applied per test file)
 pnpm lint            # biome check .   (pnpm lint:fix to autofix)
 pnpm db:generate     # drizzle-kit generate after editing src/db/schema
 pnpm db:studio
@@ -64,6 +65,16 @@ pnpm 11 blocks dependency build scripts: allowed ones are listed under `allowBui
 - First superadmin comes from `pnpm db:setup` (`src/db/seed.ts`, idempotent, skips if any superadmin exists). Change the seed password immediately outside local dev.
 - tRPC procedure tiers (`apps/api/src/trpc/init.ts`): `publicProcedure`, `protectedProcedure` (adds `ctx.actor`), `adminProcedure`, `superadminProcedure`. Pick the strictest that fits.
 - Web guards are router loaders in `apps/web/src/app/router/guards.ts` (`requireAuth`, `requireGuest`, `requireAdmin`). They are UX only; the API is the real authority.
+
+## Projects (phase 2, M1 done)
+
+- Table `project` (`db/schema/projects.ts`), module `modules/projects/` (`projects.{router,service,repository}.ts`, `slug.ts`, `project-procedure.ts`).
+- **Ownership rule lives only in `assertCanAccess`** (`projects.service.ts`): owner, or admin/superadmin. Foreign, missing and archived projects all return `NOT_FOUND` (no existence leak). Any signed-in user may create projects.
+- **Every project-scoped tRPC procedure must extend `projectProcedure`** (`.input({ projectId })`, exposes `ctx.project`); add more fields with `.input(...)`.
+- `retentionDays` null = global `PDF_RETENTION_DAYS`; max `PDF_RETENTION_MAX_DAYS` (env). Slug is generated once from the name and never changes.
+- `users.remove` refuses (CONFLICT) while the user owns projects (FK `restrict`).
+- Web: `entities/project`, `features/projects/{create,archive,update}-project`, `widgets/projects-table`, `pages/{projects,project}`. Design: `docs/superpowers/specs/2026-11-09-projects-templates-generation-design.md`; plans in `docs/superpowers/plans/`.
+- Tests: `apps/api/test/*.test.ts`, helpers in `test/factories.ts` (`createUser`, `callerFor(actor)`, `anonymousCaller()`).
 
 ## API architecture (`apps/api/src`) - feature-based, layered
 
