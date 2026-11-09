@@ -9,6 +9,7 @@ import { ROUTES } from "@/shared/config";
 import { formatDate } from "@/shared/lib";
 import { PageHeader } from "@/shared/ui";
 import { ApiKeysTable } from "@/widgets/api-keys-table";
+import { GenerationsTable } from "@/widgets/generations-table";
 import { TemplatesTable } from "@/widgets/templates-table";
 
 const DEFAULT_RETENTION_DAYS_LABEL = "Standart";
@@ -61,6 +62,7 @@ export function ProjectPage() {
       <Tabs defaultValue="templates" keepMounted={false}>
         <Tabs.List mb="lg">
           <Tabs.Tab value="templates">Shablonlar</Tabs.Tab>
+          <Tabs.Tab value="documents">Hujjatlar</Tabs.Tab>
           <Tabs.Tab value="keys">API keylar</Tabs.Tab>
           <Tabs.Tab value="overview">Umumiy ma'lumot</Tabs.Tab>
           <Tabs.Tab value="settings">Sozlamalar</Tabs.Tab>
@@ -70,6 +72,9 @@ export function ProjectPage() {
             <CreateTemplateButton projectId={project.id} />
           </Group>
           <TemplatesTable projectId={project.id} />
+        </Tabs.Panel>
+        <Tabs.Panel value="documents">
+          <GenerationsTable projectId={project.id} />
         </Tabs.Panel>
         <Tabs.Panel value="keys">
           <Group justify="flex-end" mb="md">

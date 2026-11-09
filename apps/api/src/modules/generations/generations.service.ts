@@ -138,4 +138,29 @@ export const generationsService = {
       await new Promise((r) => setTimeout(r, 100));
     }
   },
+
+  /**
+   * Retention: deletes PDFs past their expiry and marks the rows `expired` (the row stays as
+   * history). Returns how many were cleaned.
+   */
+  async cleanExpired(now = new Date()): Promise<number> {
+    let total = 0;
+    for (;;) {
+      const rows = await repo.expiredPdfs(now);
+      for (const row of rows) {
+        if (row.pdfKey) await storage.remove(row.pdfKey);
+        await repo.update(row.id, { status: "expired", pdfKey: null });
+      }
+      total += rows.length;
+      if (rows.length < 500) return total;
+    }
+  },
 };
+
+/** Boot hook: sweep every 10 minutes (and once at start). */
+export function startRetentionCleaner() {
+  const run = () =>
+    generationsService.cleanExpired().catch((e) => console.error("[retention] cleanup failed", e));
+  void run();
+  setInterval(run, 10 * 60_000).unref();
+}

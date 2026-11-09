@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { env } from "../src/config/env";
 import { db, schema } from "../src/db/client";
 import { generationsRepository } from "../src/modules/generations/generations.repository";
+import { generationsService } from "../src/modules/generations/generations.service";
 import { jobKey } from "../src/modules/generations/queue";
 import { storage } from "../src/modules/storage/storage";
 import { callerFor, createUser } from "./factories";
@@ -174,5 +175,41 @@ describe.skipIf(!hasTypst)("generations with Typst", () => {
     });
     const gen = await owner.generations.create({ ...ids, data: { name: "Ali" }, waitMs: 15000 });
     expect(["timeout", "render_error"]).toContain(gen.status);
+  });
+});
+
+describe("retention cleaner", () => {
+  it("deletes expired PDFs, marks rows expired and keeps fresh ones", async () => {
+    const { ids, project } = await setup();
+    const version = (await db.select().from(schema.templateVersion))[0];
+    if (!version) throw new Error("no version");
+    const mk = async (expiresAt: Date) => {
+      const id = crypto.randomUUID();
+      const key = `pdf/${id}.pdf`;
+      await storage.put(key, Buffer.from("%PDF-1.7"));
+      await db.insert(schema.generation).values({
+        id,
+        projectId: project.id,
+        templateId: ids.templateId,
+        templateVersionId: version.id,
+        source: "api",
+        status: "ok",
+        inputSha256: "x",
+        queuedAt: new Date(),
+        pdfKey: key,
+        pdfExpiresAt: expiresAt,
+      });
+      return { id, key };
+    };
+    const old = await mk(new Date(Date.now() - 1000));
+    const fresh = await mk(new Date(Date.now() + 60_000));
+
+    expect(await generationsService.cleanExpired()).toBe(1);
+    expect(existsSync(storage.getPath(old.key))).toBe(false);
+    expect(existsSync(storage.getPath(fresh.key))).toBe(true);
+    expect((await generationsRepository.find(old.id))?.status).toBe("expired");
+    expect((await generationsRepository.find(old.id))?.pdfKey).toBeNull();
+    expect((await generationsRepository.find(fresh.id))?.status).toBe("ok");
+    expect(await generationsService.cleanExpired()).toBe(0);
   });
 });

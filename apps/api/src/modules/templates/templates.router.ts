@@ -21,6 +21,8 @@ export const templatesRouter = router({
 
   get: templateProcedure.query(({ ctx }) => templatesService.get(ctx.template)),
 
+  apiExample: templateProcedure.query(({ ctx }) => templatesService.apiExample(ctx.template)),
+
   /** Read-only: the current draft or null. `getDraft` creates one when missing. */
   draft: templateProcedure.query(({ ctx }) => templatesService.findDraft(ctx.template)),
 

@@ -105,7 +105,13 @@ pnpm 11 blocks dependency build scripts: allowed ones are listed under `allowBui
 - Web: project tab "API keylar" (`entities/api-key`, `features/api-keys/{create-api-key,revoke-api-key}`, `widgets/api-keys-table`); creation shows the secret once in a modal.
 - Uploads (`modules/uploads/`): `POST /v1/uploads` takes a **raw binary body** (png/jpeg/svg, detected by content via `inspectContent`, not multipart), streams to a temp file (<= `UPLOAD_MAX_MB`), per-project active quota `UPLOAD_PROJECT_QUOTA_MB` (413 `quota_exceeded`), table `upload` (id `upl_<24 hex>`, expires after `UPLOAD_TTL_MINUTES`, swept every 10 min by `startUploadCleaner`). Returns `{uploadId, mime, bytes, width, height, expiresAt}`.
 - `image` fields take an upload id. `uploadsService.resolveImages` runs in `generations.create` (same project, not expired, `formats`/`maxSizeMb`/`maxMegapixels`; failures -> `validation_error` with JSON-pointer path, codes `image_not_found|image_format|image_size|image_pixels`; used uploads are extended to >= 1 h) and again in `queue.processJob`. `renderToFile` swaps ids for `uploads/<id>.<ext>` via `transformImages` and copies files into the job dir (`extraFiles`). Preview and publish dry-run use `images: { placeholder: true }` (built-in PNG), so sample data needs no real upload.
-- Not built yet: webhook (M6), code samples in the UI (M5), webp.
+- Not built yet: webhook (M6), webp.
+
+## Generation log, retention, snippets (phase 2, M5 done)
+
+- Retention: `generationsService.cleanExpired()` deletes PDFs whose `pdfExpiresAt` passed and marks the row `expired` (row kept as history, `pdfKey` nulled). `startRetentionCleaner()` (called from `index.ts`) sweeps at boot and every 10 min; uploads have their own sweeper.
+- Web: project tab "Hujjatlar" (`entities/generation`, `widgets/generations-table`): DataTable with time, template, source (UI/API), status badge (tooltip shows the first validation error / Typst diagnostic), pages, size, duration, PDF download (`/api/generations/:id/file`); polls every 3 s while jobs are queued/processing.
+- Template page section "API orqali ishlatish" (`features/templates/edit-template/ui/ApiSnippets.tsx`, `model/snippets.ts`): cURL / Node.js / Python for `POST /v1/templates/:slug/generate`, body from `templates.apiExample` (sample generated from the published schema).
 
 ## API architecture (`apps/api/src`) - feature-based, layered
 

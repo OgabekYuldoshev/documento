@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNotNull, lte } from "drizzle-orm";
 import { db, schema } from "../../db/client";
 import type { GenerationStatus } from "../../db/schema";
 
@@ -71,6 +71,21 @@ export const generationsRepository = {
       .from(generation)
       .where(and(...conds))
       .orderBy(desc(generation.queuedAt))
+      .limit(limit);
+  },
+
+  /** Finished PDFs whose retention has run out. */
+  expiredPdfs(now: Date, limit = 500) {
+    return db
+      .select()
+      .from(generation)
+      .where(
+        and(
+          eq(generation.status, "ok"),
+          isNotNull(generation.pdfExpiresAt),
+          lte(generation.pdfExpiresAt, now),
+        ),
+      )
       .limit(limit);
   },
 };

@@ -121,6 +121,16 @@ describe("templates router", () => {
     expect(ok.breaking.map((b) => b.kind)).toEqual(["removed"]);
   });
 
+  it("gives integration examples only for a published version", async () => {
+    const { owner, ids, save } = await setup();
+    await save();
+    expect(await owner.templates.apiExample(ids)).toBeNull();
+    await owner.templates.publish(ids);
+    const example = await owner.templates.apiExample(ids);
+    expect(example).toMatchObject({ version: 1, data: { name: "Matn", age: 0 } });
+    expect(example?.slug).toMatch(/^invoice/);
+  });
+
   it("restores an old version into the draft", async () => {
     const { owner, ids, save } = await setup();
     await save({ source: "v1 source" });

@@ -5,6 +5,7 @@ import {
   DEFAULT_TEMPLATE_SOURCE,
   diffSchemas,
   type SaveDraftInput,
+  sampleFromSchema,
   TEMPLATE_SOURCE_MAX_BYTES,
   type TemplateSchema,
   templateSchemaSchema,
@@ -115,6 +116,17 @@ export const templatesService = {
       template,
       current: versions.find((v) => v.id === template.currentVersionId) ?? null,
       draft: versions.find((v) => v.status === "draft") ?? null,
+    };
+  },
+
+  /** Slug + example request body for the integration snippets (published version only). */
+  async apiExample(template: Template) {
+    const current = await repo.findCurrent(template.id);
+    if (!current) return null;
+    return {
+      slug: template.slug,
+      version: current.number,
+      data: sampleFromSchema(templateSchemaSchema.parse(current.schema)),
     };
   },
 

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { getErrorMessage, trpc } from "@/shared/api";
 import { notify } from "@/shared/lib";
 import { invalidateTemplateQueries } from "../../invalidate";
+import { ApiSnippets } from "./ApiSnippets";
 import { DraftForm } from "./DraftForm";
 import { VersionHistory } from "./VersionHistory";
 
@@ -43,6 +44,11 @@ export function TemplateEditor({ projectId, templateId }: Props) {
           </Button>
         </Stack>
       )}
+      <Divider />
+      <Stack gap="sm">
+        <Title order={4}>API orqali ishlatish</Title>
+        <ApiSnippets {...ids} />
+      </Stack>
       <Divider />
       <Stack gap="sm">
         <Title order={4}>Versiyalar</Title>
