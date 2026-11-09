@@ -33,10 +33,10 @@ export function LoginPage() {
         <Stack gap="xl" align="flex-start">
           <Stack gap="sm" maw={480}>
             <Title order={1} fz={40} lh={1.15} style={{ letterSpacing: "-0.03em" }}>
-              Generate professional documents in seconds.
+              Professional hujjatlarni soniyalarda yarating.
             </Title>
             <Text opacity={0.8} fz="md">
-              Sign in with the account your administrator created for you.
+              Administrator siz uchun yaratgan hisob bilan kiring.
             </Text>
           </Stack>
           <DocumentPreview />
@@ -44,7 +44,7 @@ export function LoginPage() {
 
         <Group gap="xs" opacity={0.75}>
           <IconShieldLock size={18} />
-          <Text size="sm">Access is invitation-only</Text>
+          <Text size="sm">Kirish faqat taklif asosida</Text>
         </Group>
       </Box>
 
@@ -63,9 +63,9 @@ export function LoginPage() {
                   Documento
                 </Text>
               </Group>
-              <Title order={2}>Welcome back</Title>
+              <Title order={2}>Qaytganingiz bilan</Title>
               <Text c="dimmed" size="sm">
-                Enter your email and password to continue.
+                Davom etish uchun email va parolingizni kiriting.
               </Text>
             </Stack>
             <LoginForm />

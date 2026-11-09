@@ -62,7 +62,10 @@ export const theme: MantineThemeOverride = createTheme({
       styles: { root: { backgroundColor: "var(--app-surface)" } },
     },
     Popover: { styles: { dropdown: { backgroundColor: "var(--app-surface)" } } },
-    Badge: { defaultProps: { radius: "xl" }, styles: { label: { fontWeight: 600 } } },
+    Badge: {
+      defaultProps: { radius: "xl" },
+      styles: { label: { fontWeight: 600, textTransform: "none" } },
+    },
     Avatar: { defaultProps: { color: "brand", variant: "light" } },
     ThemeIcon: { defaultProps: { radius: "md" } },
     Tooltip: { defaultProps: { radius: "md", withArrow: true } },

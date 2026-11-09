@@ -8,7 +8,7 @@ export function useCreateUser(onCreated?: () => void) {
     ...trpc.users.create.mutationOptions(),
     onSuccess: async () => {
       await invalidateUserQueries();
-      notify.success("User created");
+      notify.success("Foydalanuvchi qo'shildi");
       onCreated?.();
     },
     onError: (error) => notify.error(getErrorMessage(error)),

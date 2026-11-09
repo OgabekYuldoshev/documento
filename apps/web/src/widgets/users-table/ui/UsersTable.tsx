@@ -33,10 +33,10 @@ export function UsersTable() {
         <Table verticalSpacing="sm" highlightOnHover>
           <Table.Thead>
             <Table.Tr>
-              <Table.Th>User</Table.Th>
-              <Table.Th>Role</Table.Th>
-              <Table.Th>Status</Table.Th>
-              <Table.Th>Created</Table.Th>
+              <Table.Th>Foydalanuvchi</Table.Th>
+              <Table.Th>Rol</Table.Th>
+              <Table.Th>Holati</Table.Th>
+              <Table.Th>Qo'shilgan</Table.Th>
               <Table.Th />
             </Table.Tr>
           </Table.Thead>
@@ -51,7 +51,7 @@ export function UsersTable() {
                 </Table.Td>
                 <Table.Td>
                   <Badge variant="dot" color={u.banned ? "orange" : "teal"}>
-                    {u.banned ? "Blocked" : "Active"}
+                    {u.banned ? "Bloklangan" : "Faol"}
                   </Badge>
                 </Table.Td>
                 <Table.Td>

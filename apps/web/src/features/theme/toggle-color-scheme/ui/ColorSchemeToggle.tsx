@@ -7,11 +7,11 @@ export function ColorSchemeToggle() {
   const next = scheme === "dark" ? "light" : "dark";
 
   return (
-    <Tooltip label={`Switch to ${next} mode`}>
+    <Tooltip label={next === "dark" ? "Tungi rejim" : "Kunduzgi rejim"}>
       <ActionIcon
         variant="default"
         size="lg"
-        aria-label="Toggle color scheme"
+        aria-label="Rejimni almashtirish"
         onClick={() => setColorScheme(next)}
       >
         {scheme === "dark" ? <IconSun size={18} /> : <IconMoon size={18} />}

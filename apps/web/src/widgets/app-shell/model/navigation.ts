@@ -18,11 +18,11 @@ export type NavGroup = {
 /** Single source of truth for the sidebar and the ⌘K search. Add new pages here. */
 export const NAVIGATION: NavGroup[] = [
   {
-    items: [{ to: ROUTES.dashboard, label: "Dashboard", icon: IconLayoutDashboard }],
+    items: [{ to: ROUTES.dashboard, label: "Bosh sahifa", icon: IconLayoutDashboard }],
   },
   {
-    title: "Administration",
-    items: [{ to: ROUTES.users, label: "Users", icon: IconUsers, adminOnly: true }],
+    title: "Boshqaruv",
+    items: [{ to: ROUTES.users, label: "Foydalanuvchilar", icon: IconUsers, adminOnly: true }],
   },
 ];
 

@@ -1,14 +1,14 @@
 import { z } from "zod";
 
-export const emailSchema = z.string().trim().toLowerCase().pipe(z.email("Invalid email address"));
+export const emailSchema = z.string().trim().toLowerCase().pipe(z.email("Email manzili noto'g'ri"));
 
 export const passwordSchema = z
   .string()
-  .min(8, "At least 8 characters")
-  .max(128, "At most 128 characters");
+  .min(8, "Kamida 8 ta belgi")
+  .max(128, "Ko'pi bilan 128 ta belgi");
 
 export const loginSchema = z.object({
   email: emailSchema,
-  password: z.string().min(1, "Password is required"),
+  password: z.string().min(1, "Parolni kiriting"),
 });
 export type LoginInput = z.infer<typeof loginSchema>;

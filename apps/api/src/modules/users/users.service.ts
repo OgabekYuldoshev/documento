@@ -1,4 +1,4 @@
-import { ASSIGNABLE_ROLES, type CreateUserInput, type Role } from "@documento/shared";
+import { ASSIGNABLE_ROLES, type CreateUserInput, getRoleLabel, type Role } from "@documento/shared";
 import { TRPCError } from "@trpc/server";
 import { APIError } from "better-auth/api";
 import { auth } from "../../lib/auth";
@@ -6,11 +6,20 @@ import { usersRepository } from "./users.repository";
 
 export type Actor = { id: string; role: Role };
 
+const AUTH_ERRORS: Record<string, string> = {
+  USER_ALREADY_EXISTS: "Bu email bilan foydalanuvchi allaqachon mavjud",
+  USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL: "Bu email bilan foydalanuvchi allaqachon mavjud",
+  PASSWORD_TOO_SHORT: "Parol juda qisqa",
+  PASSWORD_TOO_LONG: "Parol juda uzun",
+  INVALID_EMAIL: "Email manzili noto'g'ri",
+};
+
 function rethrow(error: unknown): never {
   if (error instanceof APIError) {
     const status = Number(error.statusCode);
     const code = status === 401 ? "UNAUTHORIZED" : status === 403 ? "FORBIDDEN" : "BAD_REQUEST";
-    throw new TRPCError({ code, message: error.message, cause: error });
+    const message = AUTH_ERRORS[String(error.body?.code ?? "")] ?? "So'rovni bajarib bo'lmadi";
+    throw new TRPCError({ code, message, cause: error });
   }
   throw error;
 }
@@ -20,17 +29,20 @@ async function assertCanManage(actor: Actor, targetId: string) {
   if (actor.id === targetId) {
     throw new TRPCError({
       code: "FORBIDDEN",
-      message: "You cannot perform this action on yourself",
+      message: "Bu amalni o'zingizga nisbatan bajara olmaysiz",
     });
   }
   const target = await usersRepository.findById(targetId);
-  if (!target) throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
+  if (!target) throw new TRPCError({ code: "NOT_FOUND", message: "Foydalanuvchi topilmadi" });
   if (target.role === "superadmin") {
-    throw new TRPCError({ code: "FORBIDDEN", message: "Superadmin is protected" });
+    throw new TRPCError({ code: "FORBIDDEN", message: "Superadmin himoyalangan" });
   }
   const manageable: readonly string[] = ASSIGNABLE_ROLES[actor.role];
   if (!manageable.includes(target.role)) {
-    throw new TRPCError({ code: "FORBIDDEN", message: "Insufficient permissions for this user" });
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Bu foydalanuvchi ustida amal bajarishga huquqingiz yetmaydi",
+    });
   }
 }
 
@@ -42,7 +54,10 @@ export const usersService = {
   async create(actor: Actor, headers: Headers, input: CreateUserInput) {
     const allowed: readonly string[] = ASSIGNABLE_ROLES[actor.role];
     if (!allowed.includes(input.role)) {
-      throw new TRPCError({ code: "FORBIDDEN", message: `You cannot create a "${input.role}"` });
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: `"${getRoleLabel(input.role)}" rolini yarata olmaysiz`,
+      });
     }
     try {
       const { user } = await auth.api.createUser({

@@ -10,5 +10,14 @@ export const ASSIGNABLE_ROLES = {
 
 export const ADMIN_ROLES = ["superadmin", "admin"] as const satisfies readonly Role[];
 
+/** Display names (Uzbek) for roles. */
+export const ROLE_LABELS: Record<Role, string> = {
+  superadmin: "Superadmin",
+  admin: "Admin",
+  user: "Foydalanuvchi",
+};
+
+export const getRoleLabel = (role: string) => ROLE_LABELS[role as Role] ?? role;
+
 export const isAdminRole = (role: string | null | undefined): role is "superadmin" | "admin" =>
   role === "superadmin" || role === "admin";

@@ -1,4 +1,4 @@
-import { ASSIGNABLE_ROLES, createUserSchema, type Role } from "@documento/shared";
+import { ASSIGNABLE_ROLES, createUserSchema, getRoleLabel, type Role } from "@documento/shared";
 import { Button, Modal, PasswordInput, Select, Stack, TextInput } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useDisclosure } from "@mantine/hooks";
@@ -25,9 +25,9 @@ export function CreateUserButton() {
   return (
     <>
       <Button leftSection={<IconUserPlus size={18} />} onClick={open}>
-        New user
+        Yangi foydalanuvchi
       </Button>
-      <Modal opened={opened} onClose={close} title="Create user" centered>
+      <Modal opened={opened} onClose={close} title="Foydalanuvchi qo'shish" centered>
         <form
           onSubmit={form.onSubmit((values) =>
             create.mutate({ ...values, role: values.role as "admin" | "user" }),
@@ -35,22 +35,22 @@ export function CreateUserButton() {
           noValidate
         >
           <Stack>
-            <TextInput label="Full name" data-autofocus {...form.getInputProps("name")} />
+            <TextInput label="Ism familiya" data-autofocus {...form.getInputProps("name")} />
             <TextInput label="Email" autoComplete="off" {...form.getInputProps("email")} />
             <PasswordInput
-              label="Temporary password"
-              description="Min. 8 characters. Share it securely with the user."
+              label="Vaqtinchalik parol"
+              description="Kamida 8 ta belgi. Foydalanuvchiga xavfsiz yo'l bilan yetkazing."
               autoComplete="new-password"
               {...form.getInputProps("password")}
             />
             <Select
-              label="Role"
+              label="Rol"
               allowDeselect={false}
-              data={roles.map((r) => ({ value: r, label: r[0]?.toUpperCase() + r.slice(1) }))}
+              data={roles.map((r) => ({ value: r, label: getRoleLabel(r) }))}
               {...form.getInputProps("role")}
             />
             <Button type="submit" loading={create.isPending}>
-              Create user
+              Qo'shish
             </Button>
           </Stack>
         </form>

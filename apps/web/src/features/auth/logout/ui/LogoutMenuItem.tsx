@@ -11,7 +11,7 @@ export function LogoutMenuItem() {
       onClick={() => logout.mutate()}
       disabled={logout.isPending}
     >
-      Sign out
+      Chiqish
     </Menu.Item>
   );
 }

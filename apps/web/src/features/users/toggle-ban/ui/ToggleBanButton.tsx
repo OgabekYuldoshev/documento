@@ -15,7 +15,7 @@ export function ToggleBanButton({ id, name, banned }: Props) {
     ...trpc.users.setBanned.mutationOptions(),
     onSuccess: async () => {
       await invalidateUserQueries();
-      notify.success(banned ? "User unblocked" : "User blocked");
+      notify.success(banned ? "Foydalanuvchi blokdan chiqarildi" : "Foydalanuvchi bloklandi");
       close();
     },
     onError: (error) => notify.error(getErrorMessage(error)),
@@ -23,7 +23,7 @@ export function ToggleBanButton({ id, name, banned }: Props) {
 
   return (
     <>
-      <Tooltip label={banned ? "Unblock" : "Block"}>
+      <Tooltip label={banned ? "Blokdan chiqarish" : "Bloklash"}>
         <ActionIcon variant="subtle" color={banned ? "teal" : "orange"} onClick={open}>
           {banned ? <IconLockOpen size={18} /> : <IconLock size={18} />}
         </ActionIcon>
@@ -31,13 +31,13 @@ export function ToggleBanButton({ id, name, banned }: Props) {
       <ConfirmModal
         opened={opened}
         onClose={close}
-        title={banned ? "Unblock user" : "Block user"}
+        title={banned ? "Blokdan chiqarish" : "Bloklash"}
         message={
           banned
-            ? `Allow ${name} to sign in again?`
-            : `${name} will be signed out and unable to sign in.`
+            ? `${name} yana tizimga kira olsinmi?`
+            : `${name} tizimdan chiqariladi va qayta kira olmaydi.`
         }
-        confirmLabel={banned ? "Unblock" : "Block"}
+        confirmLabel={banned ? "Blokdan chiqarish" : "Bloklash"}
         color={banned ? "teal" : "orange"}
         loading={mutation.isPending}
         onConfirm={() => mutation.mutate({ id, banned: !banned })}

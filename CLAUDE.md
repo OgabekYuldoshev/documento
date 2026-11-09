@@ -118,6 +118,7 @@ Conventions:
 
 ## Conventions
 
+- **UI language: Uzbek (Latin).** All user-visible text is Uzbek: web labels/toasts, zod messages in `packages/shared`, and TRPCError / Better Auth error messages shown to users (map Better Auth codes in `users.service.ts` `AUTH_ERRORS` and `useLogin.ts` `LOGIN_ERRORS`). Role names via `getRoleLabel()` (superadmin -> "Superadmin", admin -> "Admin", user -> "Foydalanuvchi"). Dates via `shared/lib/format.ts` `formatDate` (manual Uzbek months; browser ICU `uz` data is unreliable). Code, identifiers, logs and commits stay English. Use `'` in words like `o'` / `g'` (straight apostrophe).
 - TypeScript strict, `verbatimModuleSyntax` (use `import type`), no `any`.
 - Biome is the only linter/formatter (2 spaces, double quotes, 100 cols). Do not add ESLint/Prettier.
 - Commits follow Conventional Commits, validated by lefthook `commit-msg` (commitlint): `feat(web): add users page`. Scopes: `web, api, shared, config, deps, docs` (warn-level).

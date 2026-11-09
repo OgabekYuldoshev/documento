@@ -9,14 +9,17 @@ export function DashboardPage() {
 
   return (
     <Stack gap="lg">
-      <PageHeader title={`Welcome, ${firstName}`} description="Here is what's happening today." />
+      <PageHeader
+        title={`Xush kelibsiz, ${firstName}`}
+        description="Bugungi holat bilan tanishing."
+      />
       {isAdmin ? (
         <StatsGrid />
       ) : (
         <Paper withBorder p="xl" radius="md">
-          <Title order={4}>You're signed in</Title>
+          <Title order={4}>Siz tizimdasiz</Title>
           <Text c="dimmed" size="sm" mt={4}>
-            Your workspace is being set up. More features are coming soon.
+            Ish maydoningiz tayyorlanmoqda. Yangi imkoniyatlar tez orada qo'shiladi.
           </Text>
         </Paper>
       )}

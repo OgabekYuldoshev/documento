@@ -6,8 +6,8 @@ export function UsersPage() {
   return (
     <>
       <PageHeader
-        title="Users"
-        description="Create and manage accounts. Sign-up is disabled; only admins add users."
+        title="Foydalanuvchilar"
+        description="Hisoblarni yaratish va boshqarish. Ro'yxatdan o'tish yopiq, foydalanuvchilarni faqat adminlar qo'shadi."
         actions={<CreateUserButton />}
       />
       <UsersTable />

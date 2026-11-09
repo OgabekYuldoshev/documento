@@ -15,7 +15,7 @@ export function ConfirmModal({
   opened,
   title,
   message,
-  confirmLabel = "Confirm",
+  confirmLabel = "Tasdiqlash",
   color = "red",
   loading,
   onConfirm,
@@ -26,7 +26,7 @@ export function ConfirmModal({
       <Text size="sm">{message}</Text>
       <Group justify="flex-end" mt="lg">
         <Button variant="default" onClick={onClose} disabled={loading}>
-          Cancel
+          Bekor qilish
         </Button>
         <Button color={color} onClick={onConfirm} loading={loading}>
           {confirmLabel}

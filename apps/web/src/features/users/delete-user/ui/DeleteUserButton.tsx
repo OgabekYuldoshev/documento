@@ -13,7 +13,7 @@ export function DeleteUserButton({ id, name }: { id: string; name: string }) {
     ...trpc.users.remove.mutationOptions(),
     onSuccess: async () => {
       await invalidateUserQueries();
-      notify.success("User deleted");
+      notify.success("Foydalanuvchi o'chirildi");
       close();
     },
     onError: (error) => notify.error(getErrorMessage(error)),
@@ -21,7 +21,7 @@ export function DeleteUserButton({ id, name }: { id: string; name: string }) {
 
   return (
     <>
-      <Tooltip label="Delete">
+      <Tooltip label="O'chirish">
         <ActionIcon variant="subtle" color="red" onClick={open}>
           <IconTrash size={18} />
         </ActionIcon>
@@ -29,9 +29,9 @@ export function DeleteUserButton({ id, name }: { id: string; name: string }) {
       <ConfirmModal
         opened={opened}
         onClose={close}
-        title="Delete user"
-        message={`Permanently delete ${name}? This cannot be undone.`}
-        confirmLabel="Delete"
+        title="Foydalanuvchini o'chirish"
+        message={`${name} butunlay o'chirilsinmi? Bu amalni qaytarib bo'lmaydi.`}
+        confirmLabel="O'chirish"
         loading={mutation.isPending}
         onConfirm={() => mutation.mutate({ id })}
       />

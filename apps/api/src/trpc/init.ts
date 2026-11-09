@@ -29,7 +29,7 @@ export const createCallerFactory = t.createCallerFactory;
 export const publicProcedure = t.procedure;
 
 export const protectedProcedure = t.procedure.use(({ ctx, next }) => {
-  if (!ctx.session) throw new TRPCError({ code: "UNAUTHORIZED", message: "Not authenticated" });
+  if (!ctx.session) throw new TRPCError({ code: "UNAUTHORIZED", message: "Tizimga kirmagansiz" });
   const { user } = ctx.session;
   return next({
     ctx: {
@@ -42,14 +42,14 @@ export const protectedProcedure = t.procedure.use(({ ctx, next }) => {
 
 export const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
   if (!isAdminRole(ctx.actor.role)) {
-    throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+    throw new TRPCError({ code: "FORBIDDEN", message: "Admin huquqi talab qilinadi" });
   }
   return next();
 });
 
 export const superadminProcedure = protectedProcedure.use(({ ctx, next }) => {
   if (ctx.actor.role !== "superadmin") {
-    throw new TRPCError({ code: "FORBIDDEN", message: "Superadmin access required" });
+    throw new TRPCError({ code: "FORBIDDEN", message: "Superadmin huquqi talab qilinadi" });
   }
   return next();
 });

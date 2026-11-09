@@ -11,27 +11,27 @@ export function StatsGrid() {
   return (
     <SimpleGrid cols={{ base: 1, xs: 2, lg: 4 }}>
       <StatCard
-        label="Total users"
+        label="Jami foydalanuvchilar"
         value={stats?.total}
         icon={<IconUsers size={26} />}
         loading={isPending}
       />
       <StatCard
-        label="Active"
+        label="Faol"
         value={stats?.active}
         icon={<IconUserCheck size={26} />}
         color="teal"
         loading={isPending}
       />
       <StatCard
-        label="Blocked"
+        label="Bloklangan"
         value={stats?.banned}
         icon={<IconUserOff size={26} />}
         color="orange"
         loading={isPending}
       />
       <StatCard
-        label="Admins"
+        label="Adminlar"
         value={stats?.admins}
         icon={<IconShieldCheck size={26} />}
         color="grape"

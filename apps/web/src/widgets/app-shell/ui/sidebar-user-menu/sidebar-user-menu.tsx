@@ -1,3 +1,4 @@
+import { getRoleLabel } from "@documento/shared";
 import { Avatar, Menu, Stack, Text, UnstyledButton } from "@mantine/core";
 import { IconSelector } from "@tabler/icons-react";
 import { useSession } from "@/entities/session";
@@ -13,7 +14,7 @@ export function SidebarUserMenu() {
   return (
     <Menu position="top-start" offset={8} width="target" shadow="lg">
       <Menu.Target>
-        <UnstyledButton className={classes.trigger} aria-label="Account menu">
+        <UnstyledButton className={classes.trigger} aria-label="Hisob menyusi">
           <Avatar radius="xl" size={40}>
             {getInitials(user.name)}
           </Avatar>
@@ -22,7 +23,7 @@ export function SidebarUserMenu() {
               {user.name}
             </Text>
             <Text size="xs" c="dimmed" className={classes.ellipsis}>
-              {user.role}
+              {getRoleLabel(user.role)}
             </Text>
           </div>
           <IconSelector size={16} className={classes.chevron} />

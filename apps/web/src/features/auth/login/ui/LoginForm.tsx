@@ -23,7 +23,7 @@ export function LoginForm() {
         )}
         <TextInput
           label="Email"
-          placeholder="you@company.com"
+          placeholder="siz@kompaniya.uz"
           autoComplete="username"
           leftSection={<IconAt size={16} />}
           data-autofocus
@@ -31,15 +31,15 @@ export function LoginForm() {
           {...form.getInputProps("email")}
         />
         <PasswordInput
-          label="Password"
-          placeholder="Your password"
+          label="Parol"
+          placeholder="Parolingiz"
           autoComplete="current-password"
           leftSection={<IconLock size={16} />}
           key={form.key("password")}
           {...form.getInputProps("password")}
         />
         <Button type="submit" size="md" fullWidth loading={login.isPending}>
-          Sign in
+          Kirish
         </Button>
       </Stack>
     </form>

@@ -2,7 +2,7 @@ import { z } from "zod";
 import { emailSchema, passwordSchema } from "./auth.schemas";
 
 export const createUserSchema = z.object({
-  name: z.string().trim().min(2, "At least 2 characters").max(100),
+  name: z.string().trim().min(2, "Kamida 2 ta belgi").max(100),
   email: emailSchema,
   password: passwordSchema,
   role: z.enum(["admin", "user"]),

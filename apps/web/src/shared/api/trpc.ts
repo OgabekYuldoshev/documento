@@ -20,5 +20,5 @@ export const trpc = createTRPCOptionsProxy<AppRouter>({ client: trpcClient, quer
 export const isUnauthorized = (error: unknown) =>
   error instanceof TRPCClientError && error.data?.code === "UNAUTHORIZED";
 
-export const getErrorMessage = (error: unknown, fallback = "Something went wrong") =>
+export const getErrorMessage = (error: unknown, fallback = "Xatolik yuz berdi") =>
   error instanceof Error && error.message ? error.message : fallback;
