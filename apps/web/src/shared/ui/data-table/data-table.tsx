@@ -45,6 +45,8 @@ export type DataTableProps<TData extends object> = {
   initialSorting?: SortingState;
   emptyTitle?: string;
   emptyDescription?: string;
+  /** Call-to-action shown under the empty message (only when there is no data at all). */
+  emptyAction?: ReactNode;
   minWidth?: number;
   onRowClick?: (row: TData) => void;
 };
@@ -63,6 +65,7 @@ export function DataTable<TData extends object>({
   initialSorting,
   emptyTitle = "Ma'lumot topilmadi",
   emptyDescription,
+  emptyAction,
   minWidth = 720,
   onRowClick,
 }: DataTableProps<TData>) {
@@ -194,6 +197,7 @@ export function DataTable<TData extends object>({
                   {emptyDescription}
                 </Text>
               )}
+              {emptyAction && totalRows === 0 && !search && <Box mt="xs">{emptyAction}</Box>}
             </Stack>
           </Center>
         )}

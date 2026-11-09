@@ -4,11 +4,17 @@ import { useForm } from "@mantine/form";
 import { useDisclosure } from "@mantine/hooks";
 import { IconPlus } from "@tabler/icons-react";
 import { zod4Resolver } from "mantine-form-zod-resolver";
+import type { ReactNode } from "react";
 import { useNavigate } from "react-router";
 import { ROUTES } from "@/shared/config";
 import { useCreateProject } from "../model/useCreateProject";
 
-export function CreateProjectButton() {
+type CreateProjectButtonProps = {
+  /** Custom trigger (e.g. a sidebar item). Defaults to the primary button. */
+  renderTrigger?: (open: () => void) => ReactNode;
+};
+
+export function CreateProjectButton({ renderTrigger }: CreateProjectButtonProps) {
   const [opened, { open, close }] = useDisclosure(false);
   const navigate = useNavigate();
 
@@ -25,9 +31,13 @@ export function CreateProjectButton() {
 
   return (
     <>
-      <Button leftSection={<IconPlus size={18} />} onClick={open}>
-        Yangi project
-      </Button>
+      {renderTrigger ? (
+        renderTrigger(open)
+      ) : (
+        <Button leftSection={<IconPlus size={18} />} onClick={open}>
+          Yangi project
+        </Button>
+      )}
       <Modal opened={opened} onClose={close} title="Project yaratish" centered>
         <form
           onSubmit={form.onSubmit((values) =>

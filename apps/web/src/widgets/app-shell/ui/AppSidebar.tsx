@@ -8,10 +8,12 @@ import {
   ThemeIcon,
 } from "@mantine/core";
 import { IconFileText } from "@tabler/icons-react";
+import { Fragment } from "react";
 import { NavLink as RouterLink } from "react-router";
 import { useSession } from "@/entities/session";
 import { ROUTES } from "@/shared/config";
 import { getVisibleNavigation } from "../model/navigation";
+import { SidebarProjects } from "./SidebarProjects";
 import { SidebarUserMenu } from "./sidebar-user-menu";
 
 export const HEADER_HEIGHT = 64;
@@ -59,15 +61,17 @@ export function AppSidebar({ onNavigate }: { onNavigate: () => void }) {
                 </Text>
               )}
               {group.items.map((item) => (
-                <NavLink
-                  key={item.to}
-                  component={RouterLink}
-                  to={item.to}
-                  end={item.to === ROUTES.dashboard}
-                  label={item.label}
-                  leftSection={<item.icon size={19} stroke={1.6} />}
-                  onClick={onNavigate}
-                />
+                <Fragment key={item.to}>
+                  <NavLink
+                    component={RouterLink}
+                    to={item.to}
+                    end={item.to === ROUTES.dashboard || item.to === ROUTES.projects}
+                    label={item.label}
+                    leftSection={<item.icon size={19} stroke={1.6} />}
+                    onClick={onNavigate}
+                  />
+                  {item.to === ROUTES.projects && <SidebarProjects onNavigate={onNavigate} />}
+                </Fragment>
               ))}
             </Stack>
           ))}

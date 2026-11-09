@@ -12,7 +12,8 @@ const col = createDataTableColumns<Project>();
 export function useProjectsColumns() {
   return useMemo(
     () => [
-      col.accessor((row) => `${row.name} ${row.slug}`, {
+      // Name + description in one cell: one scan target per row instead of three columns.
+      col.accessor((row) => `${row.name} ${row.slug} ${row.description ?? ""}`, {
         id: "project",
         header: "Project",
         cell: ({ row }) => (
@@ -21,30 +22,23 @@ export function useProjectsColumns() {
               component={Link}
               to={ROUTES.project(row.original.id)}
               size="sm"
-              fw={500}
+              fw={600}
               lh={1.3}
+              c="inherit"
             >
               {row.original.name}
             </Anchor>
-            <Text size="xs" c="dimmed">
-              {row.original.slug}
+            <Text size="xs" c="dimmed" lineClamp={1} maw={520}>
+              {row.original.description || "Tavsif yo'q"}
             </Text>
           </div>
-        ),
-      }),
-      col.accessor((row) => row.description ?? "", {
-        id: "description",
-        header: "Tavsif",
-        cell: ({ getValue }) => (
-          <Text size="sm" c="dimmed" lineClamp={1}>
-            {getValue() || "—"}
-          </Text>
         ),
       }),
       col.accessor("createdAt", {
         header: "Yaratilgan",
         sortFn: "datetime",
         enableGlobalFilter: false,
+        meta: { width: 200 },
         cell: ({ getValue }) => (
           <Text size="sm" c="dimmed">
             {formatDate(getValue())}
@@ -57,7 +51,8 @@ export function useProjectsColumns() {
         enableSorting: false,
         meta: { align: "right", width: 80 },
         cell: ({ row }) => (
-          <Group gap={4} justify="flex-end" wrap="nowrap">
+          // The row is clickable; keep the archive action from also opening the project.
+          <Group gap={4} justify="flex-end" wrap="nowrap" onClick={(e) => e.stopPropagation()}>
             <ArchiveProjectButton id={row.original.id} name={row.original.name} />
           </Group>
         ),
