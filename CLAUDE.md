@@ -91,6 +91,12 @@ pnpm 11 blocks dependency build scripts: allowed ones are listed under `allowBui
 - Env: `TYPST_BIN`, `FONTS_DIR`, `RENDER_MEMORY_BUDGET_MB`. Typst tests are skipped unless Typst is installed: run `TYPST_BIN=/path/typst FONTS_DIR=/path/fonts npx vitest run` inside `apps/api` (turbo strips env vars). The starter template uses font Inter: it must exist in `FONTS_DIR`.
 - Web editor: CodeMirror 6 (`SourceEditor`) + `PreviewPanel` (iframe on a Blob URL, diagnostics with line numbers). Next (M3b): template assets, `generation` table + persistent queue.
 
+## Assets, storage, generation queue (phase 2, M3b done)
+
+- `modules/storage/storage.ts`: `Storage` interface (`put`, `putFile`, `getPath`, `remove`), local FS under `STORAGE_DIR`, keys validated (no traversal). Swap for S3 later behind the same interface.
+- Assets (`modules/assets/`): table `template_asset` (per template, shared by all versions), upload is a Hono multipart route `POST /api/templates/:templateId/assets` (tRPC cannot stream binaries), list/delete via `templateAssets.*`. `inspectAsset` checks magic bytes vs extension, <= 40 MP raster from the header, SVG ENTITY ban; names `^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`, <= 50 files, `ASSET_MAX_MB`. Typst sees them as `assets/<name>` (fonts also via `--font-path`). webp is not supported yet.
+- Generations (`modules/generations/`): table `generation` (status `queued|processing|ok|validation_error|render_error|timeout|expired`; **input data is never stored**, only its SHA-256; the job file in `jobs/<id>.json` is deleted after render). `queue.ts` claims jobs atomically (`claimNext`), `RENDER_CONCURRENCY` caps claims, the memory scheduler gates renders, `startQueue()` (called from `index.ts`) requeues jobs left `processing` after a crash. PDFs go to `pdf/<id>.pdf`, expiry = project `retentionDays` or `PDF_RETENTION_DAYS`. `GET /api/generations/:id/file` streams the PDF (410 after expiry). `generations.create` queues a UI test run and can wait up to 25 s. API-key requests and the retention cleaner (marks `expired`, deletes files) come in M4/M5.
+
 ## API architecture (`apps/api/src`) - feature-based, layered
 
 ```
