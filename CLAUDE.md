@@ -76,6 +76,14 @@ pnpm 11 blocks dependency build scripts: allowed ones are listed under `allowBui
 - Web: `entities/project`, `features/projects/{create,archive,update}-project`, `widgets/projects-table`, `pages/{projects,project}`. Design: `docs/superpowers/specs/2026-11-09-projects-templates-generation-design.md`; plans in `docs/superpowers/plans/`.
 - Tests: `apps/api/test/*.test.ts`, helpers in `test/factories.ts` (`createUser`, `callerFor(actor)`, `anonymousCaller()`).
 
+## Templates (phase 2, M2 done)
+
+- Tables `template`, `template_version` (`db/schema/templates.ts`); module `modules/templates/` (`templates.{router,service,repository}.ts`, `template-procedure.ts`, `validate-data.ts`).
+- **Strict schema DSL lives in `packages/shared/src/template-schema.ts`**: `templateSchemaSchema` (zod; depth<=5, <=200 fields, safe regex only, reserved names blocked), `toJsonSchema`, `sampleFromSchema`, `diffSchemas` (breaking changes). Users never write raw JSON Schema. Data is validated with Ajv strict in `validateData` (Uzbek messages, JSON-pointer paths, cached per schema).
+- Versions: one **draft** per template (partial unique index), **published** immutable, previous published becomes `archived`. Edit = `getDraft` (copies current into a new draft). `publish` needs `acknowledgeBreaking: true` when `diffSchemas` finds breaking changes; sampleData must validate at publish (not at save). `publishChecks` in `templates.service.ts` is the M3 hook for the Typst dry-run.
+- Every template procedure extends `templateProcedure` (= `projectProcedure` + `{ templateId }`, NOT_FOUND across projects).
+- Web: `entities/template`, `features/templates/{create-template,edit-template}`, `widgets/{schema-builder,templates-table}`, `pages/template` (editor: Typst textarea, builder, sample JSON, limits, version history). CodeMirror, live preview and assets arrive in M3.
+
 ## API architecture (`apps/api/src`) - feature-based, layered
 
 ```

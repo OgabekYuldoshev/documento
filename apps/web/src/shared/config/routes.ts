@@ -4,4 +4,6 @@ export const ROUTES = {
   users: "/users",
   projects: "/projects",
   project: (id: string) => `/projects/${id}`,
+  template: (projectId: string, templateId: string) =>
+    `/projects/${projectId}/templates/${templateId}`,
 } as const;

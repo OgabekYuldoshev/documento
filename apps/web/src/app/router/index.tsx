@@ -4,6 +4,7 @@ import { LoginPage } from "@/pages/login";
 import { NotFoundPage } from "@/pages/not-found";
 import { ProjectPage } from "@/pages/project";
 import { ProjectsPage } from "@/pages/projects";
+import { TemplatePage } from "@/pages/template";
 import { UsersPage } from "@/pages/users";
 import { ROUTES } from "@/shared/config";
 import { AppShell } from "@/widgets/app-shell";
@@ -19,6 +20,7 @@ const router = createBrowserRouter([
       { path: ROUTES.users, loader: requireAdmin, element: <UsersPage /> },
       { path: ROUTES.projects, element: <ProjectsPage /> },
       { path: ROUTES.project(":projectId"), element: <ProjectPage /> },
+      { path: ROUTES.template(":projectId", ":templateId"), element: <TemplatePage /> },
       { path: "*", element: <NotFoundPage /> },
     ],
   },

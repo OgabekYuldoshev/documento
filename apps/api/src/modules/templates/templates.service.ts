@@ -99,6 +99,8 @@ export const templatesService = {
     };
   },
 
+  findDraft: (template: Template) => repo.findDraft(template.id),
+
   /** Existing draft, or a new one copied from the current published version. */
   async getDraft(template: Template): Promise<TemplateVersion> {
     const existing = await repo.findDraft(template.id);
