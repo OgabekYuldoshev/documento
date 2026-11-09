@@ -1,6 +1,6 @@
 import { count, desc, eq, sql } from "drizzle-orm";
 import { db } from "../../db/client";
-import { user } from "../../db/schema";
+import { project, user } from "../../db/schema";
 
 const columns = {
   id: user.id,
@@ -20,6 +20,12 @@ export const usersRepository = {
   findById: async (id: string) => {
     const [row] = await db.select(columns).from(user).where(eq(user.id, id)).limit(1);
     return row ?? null;
+  },
+
+  /** Counts all projects owned by a user, archived included (FK is restrict). */
+  countOwnedProjects: async (id: string) => {
+    const [row] = await db.select({ n: count() }).from(project).where(eq(project.ownerId, id));
+    return row?.n ?? 0;
   },
 
   stats: async () => {

@@ -82,6 +82,13 @@ export const usersService = {
 
   async remove(actor: Actor, headers: Headers, id: string) {
     await assertCanManage(actor, id);
+    if ((await usersRepository.countOwnedProjects(id)) > 0) {
+      throw new TRPCError({
+        code: "CONFLICT",
+        message:
+          "Foydalanuvchining project'lari bor. Avval ularni arxivlang yoki egasini almashtiring",
+      });
+    }
     try {
       await auth.api.removeUser({ headers, body: { userId: id } });
     } catch (error) {
