@@ -7,6 +7,7 @@ import { appRouter } from "./app-router";
 import { env } from "./config/env";
 import { auth } from "./lib/auth";
 import { assetsRoute } from "./modules/assets/assets.route";
+import { generationsRoute } from "./modules/generations/generations.route";
 import { createContext } from "./trpc/init";
 
 export const app = new Hono();
@@ -31,6 +32,7 @@ app.all("/api/auth/sign-up/*", (c) => c.json({ message: "Not found" }, 404));
 app.on(["GET", "POST"], "/api/auth/*", (c) => auth.handler(c.req.raw));
 
 app.route("/", assetsRoute);
+app.route("/", generationsRoute);
 
 app.use(
   "/api/trpc/*",

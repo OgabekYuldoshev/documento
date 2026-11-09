@@ -86,3 +86,52 @@ export const templateAsset = sqliteTable(
 );
 
 export type TemplateAsset = typeof templateAsset.$inferSelect;
+
+export const GENERATION_STATUSES = [
+  "queued",
+  "processing",
+  "ok",
+  "validation_error",
+  "render_error",
+  "timeout",
+  "expired",
+] as const;
+export type GenerationStatus = (typeof GENERATION_STATUSES)[number];
+
+/** One document generation (UI test run now, API requests in M4). The input data itself is never stored. */
+export const generation = sqliteTable(
+  "generation",
+  {
+    id: text("id").primaryKey(),
+    projectId: text("project_id")
+      .notNull()
+      .references(() => project.id, { onDelete: "restrict" }),
+    templateId: text("template_id")
+      .notNull()
+      .references(() => template.id, { onDelete: "restrict" }),
+    templateVersionId: text("template_version_id")
+      .notNull()
+      .references(() => templateVersion.id, { onDelete: "restrict" }),
+    /** Set by the API-key module in M4. */
+    apiKeyId: text("api_key_id"),
+    createdBy: text("created_by").references(() => user.id, { onDelete: "set null" }),
+    source: text("source", { enum: ["ui", "api"] }).notNull(),
+    status: text("status", { enum: GENERATION_STATUSES }).notNull(),
+    inputSha256: text("input_sha256").notNull(),
+    errorJson: text("error_json", { mode: "json" }).$type<unknown>(),
+    pdfKey: text("pdf_key"),
+    bytes: integer("bytes"),
+    pages: integer("pages"),
+    queuedAt: integer("queued_at", { mode: "timestamp_ms" }).notNull(),
+    startedAt: integer("started_at", { mode: "timestamp_ms" }),
+    finishedAt: integer("finished_at", { mode: "timestamp_ms" }),
+    durationMs: integer("duration_ms"),
+    pdfExpiresAt: integer("pdf_expires_at", { mode: "timestamp_ms" }),
+  },
+  (t) => [
+    index("generation_status_queued_idx").on(t.status, t.queuedAt),
+    index("generation_project_idx").on(t.projectId, t.queuedAt),
+  ],
+);
+
+export type Generation = typeof generation.$inferSelect;

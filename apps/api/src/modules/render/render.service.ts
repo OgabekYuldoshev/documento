@@ -42,8 +42,20 @@ const tooLarge = (message: string): RenderFailure => ({
   diagnostics: [{ severity: "error", message }],
 });
 
-/** Validates data, schedules a Typst run and returns the PDF in memory (small PDFs only). */
-export async function renderPreview(input: RenderInput): Promise<PreviewResult> {
+export type FileResult =
+  | {
+      ok: true;
+      pdfPath: string;
+      bytes: number;
+      pages: number;
+      durationMs: number;
+      /** Caller must call this once the file has been moved/read. */
+      dispose(): Promise<void>;
+    }
+  | RenderFailure;
+
+/** Validates data, schedules a Typst run (memory budget) and leaves the PDF on disk. */
+export async function renderToFile(input: RenderInput): Promise<FileResult> {
   const checked = validateData(input.schema, input.data, {
     maxPayloadBytes: input.maxPayloadBytes,
   });
@@ -69,11 +81,26 @@ export async function renderPreview(input: RenderInput): Promise<PreviewResult> 
     throw error;
   }
 
+  if (result.status !== "ok") {
+    await result.dispose();
+    const kind = result.status === "error" ? "compile" : result.status;
+    return { ok: false, kind, diagnostics: result.diagnostics };
+  }
+  return {
+    ok: true,
+    pdfPath: result.pdfPath,
+    bytes: result.bytes,
+    pages: result.pages,
+    durationMs: result.durationMs,
+    dispose: result.dispose,
+  };
+}
+
+/** Small-PDF variant for the editor preview: returns the bytes and cleans up. */
+export async function renderPreview(input: RenderInput): Promise<PreviewResult> {
+  const result = await renderToFile(input);
+  if (!result.ok) return result;
   try {
-    if (result.status !== "ok") {
-      const kind = result.status === "error" ? "compile" : result.status;
-      return { ok: false, kind, diagnostics: result.diagnostics };
-    }
     if (result.bytes > PREVIEW_MAX_BYTES) {
       return tooLarge("PDF preview uchun juda katta (20 MB dan oshdi)");
     }

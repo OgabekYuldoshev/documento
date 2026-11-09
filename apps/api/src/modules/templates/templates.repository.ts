@@ -107,6 +107,10 @@ export const templatesRepository = {
       .orderBy(desc(templateVersion.number));
   },
 
+  listVersionsFull(templateId: string) {
+    return db.select().from(templateVersion).where(eq(templateVersion.templateId, templateId));
+  },
+
   /** Version status summary for many templates (avoids N+1 on list). */
   versionSummaries(templateIds: string[]) {
     if (templateIds.length === 0) return Promise.resolve([]);

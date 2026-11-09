@@ -1,4 +1,4 @@
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, rm, writeFile } from "node:fs/promises";
 import { dirname, join, resolve, sep } from "node:path";
 import { env } from "../../config/env";
 
@@ -7,6 +7,8 @@ const KEY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._/-]*$/;
 /** Blob storage behind an interface so local disk can later be swapped for S3. */
 export type Storage = {
   put(key: string, bytes: Uint8Array): Promise<void>;
+  /** Copies a local file in without loading it into memory (large PDFs). */
+  putFile(key: string, sourcePath: string): Promise<void>;
   /** Absolute filesystem path (local storage only); callers stream from it. */
   getPath(key: string): string;
   remove(key: string): Promise<void>;
@@ -29,6 +31,11 @@ export function createLocalStorage(rootDir: string): Storage {
       const path = resolveKey(key);
       await mkdir(dirname(path), { recursive: true });
       await writeFile(path, bytes);
+    },
+    async putFile(key, sourcePath) {
+      const path = resolveKey(key);
+      await mkdir(dirname(path), { recursive: true });
+      await copyFile(sourcePath, path);
     },
     getPath: resolveKey,
     async remove(key) {
