@@ -111,6 +111,7 @@ export function CreateApiKeyButton({ projectId }: { projectId: string }) {
             {form.values.scope === "templates" && (
               <MultiSelect
                 label="Shablonlar"
+                placeholder="Shablonni tanlang"
                 data={(templates.data ?? []).map((t) => ({ value: t.id, label: t.name }))}
                 {...form.getInputProps("templateIds")}
               />
@@ -118,6 +119,7 @@ export function CreateApiKeyButton({ projectId }: { projectId: string }) {
             <Group grow align="flex-start">
               <NumberInput
                 label="Limit (so'rov/daqiqa)"
+                placeholder="Masalan: 60"
                 min={1}
                 max={API_KEY_RATE_MAX}
                 allowDecimal={false}

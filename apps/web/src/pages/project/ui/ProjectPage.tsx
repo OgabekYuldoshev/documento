@@ -61,18 +61,16 @@ export function ProjectPage() {
           <ApiKeysTable projectId={project.id} />
         </Tabs.Panel>
         <Tabs.Panel value="settings">
-          <Stack gap="md" maw={960}>
+          <Stack gap="md">
             <ProjectSettingsForm key={project.updatedAt.getTime()} project={project} />
             <SettingsSection
               danger
               title="Xavfli hudud"
               description="Qaytarib bo'lmaydigan yoki ehtiyotkorlik talab qiladigan amallar."
             >
-              <Group justify="space-between" wrap="nowrap" align="center">
+              <Group justify="space-between" wrap="wrap" align="center" gap="md">
                 <div>
-                  <Text size="sm" fw={500}>
-                    Projectni arxivlash
-                  </Text>
+                  <Text fw={500}>Projectni arxivlash</Text>
                   <Text size="sm" c="dimmed">
                     Project ro'yxatdan yo'qoladi, shablonlari va API keylari ishlamay qoladi.
                   </Text>

@@ -88,7 +88,13 @@ export const theme: MantineThemeOverride = createTheme({
     },
     NavLink: {
       defaultProps: { variant: "light" },
-      styles: { root: { fontWeight: 500, padding: "10px 12px" } },
+      styles: {
+        root: {
+          fontWeight: 500,
+          padding: "10px 12px",
+          borderRadius: "var(--mantine-radius-default)",
+        },
+      },
     },
     AppShell: {
       styles: {

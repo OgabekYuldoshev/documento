@@ -101,6 +101,7 @@ export function DraftForm({ projectId, templateId, draft }: Props) {
             <Stack maw={360}>
               <NumberInput
                 label="Render vaqt limiti (soniya)"
+                placeholder="Masalan: 30"
                 min={1}
                 max={300}
                 allowDecimal={false}
@@ -109,6 +110,7 @@ export function DraftForm({ projectId, templateId, draft }: Props) {
               />
               <NumberInput
                 label="Kiruvchi ma'lumot limiti (KB)"
+                placeholder="Masalan: 512"
                 description="Katta jadvalli hujjatlar uchun oshiring (10240 gacha)"
                 min={1}
                 max={10240}

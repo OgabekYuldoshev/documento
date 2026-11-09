@@ -1,5 +1,14 @@
 import { PROJECT_DESCRIPTION_MAX, updateProjectSchema } from "@documento/shared";
-import { Button, Group, NumberInput, Stack, Text, Textarea, TextInput } from "@mantine/core";
+import {
+  Button,
+  Collapse,
+  Group,
+  NumberInput,
+  SimpleGrid,
+  Stack,
+  Textarea,
+  TextInput,
+} from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { zod4Resolver } from "mantine-form-zod-resolver";
 import type { Project } from "@/entities/project";
@@ -42,61 +51,64 @@ export function ProjectSettingsForm({ project }: { project: Project }) {
           title="Umumiy ma'lumot"
           description="Project nomi va tavsifi ro'yxatlarda ko'rinadi."
         >
-          <TextInput label="Nomi" required {...form.getInputProps("name")} />
+          <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="md">
+            <TextInput
+              label="Nomi"
+              placeholder="Masalan: Buxgalteriya hujjatlari"
+              required
+              {...form.getInputProps("name")}
+            />
+            <TextInput label="Slug" placeholder="—" value={project.slug} readOnly disabled />
+            <TextInput
+              label="Yaratilgan"
+              placeholder="—"
+              value={formatDate(project.createdAt)}
+              readOnly
+              disabled
+            />
+          </SimpleGrid>
           <Textarea
             label="Tavsif"
+            placeholder="Bu project nima uchun ishlatiladi?"
             autosize
             minRows={2}
             maxLength={PROJECT_DESCRIPTION_MAX}
             {...form.getInputProps("description")}
           />
-          <Group gap="xl" align="flex-start">
-            <TextInput
-              label="Slug"
-              description="Yaratilganda belgilanadi, o'zgarmaydi"
-              value={project.slug}
-              readOnly
-              w={260}
-            />
-            <div>
-              <Text size="sm" fw={500}>
-                Yaratilgan
-              </Text>
-              <Text size="sm" c="dimmed" mt={6}>
-                {formatDate(project.createdAt)}
-              </Text>
-            </div>
-          </Group>
         </SettingsSection>
 
         <SettingsSection
           title="PDF saqlash"
-          description="Yaratilgan PDF fayllar qancha vaqt saqlanishini belgilaydi. Muddat tugagach fayl o'chiriladi, yozuv tarixda qoladi."
+          description="Muddat tugagach PDF fayl o'chiriladi, yozuv tarixda qoladi."
         >
-          <NumberInput
-            label="Saqlash muddati (kun)"
-            description="Bo'sh qoldirsangiz tizimdagi standart muddat ishlatiladi"
-            placeholder="Standart"
-            min={1}
-            allowDecimal={false}
-            allowNegative={false}
-            w={260}
-            {...form.getInputProps("retentionDays")}
-          />
+          <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="md">
+            <NumberInput
+              label="Saqlash muddati (kun)"
+              description="Bo'sh bo'lsa, standart muddat"
+              placeholder="Standart"
+              min={1}
+              allowDecimal={false}
+              allowNegative={false}
+              {...form.getInputProps("retentionDays")}
+            />
+          </SimpleGrid>
         </SettingsSection>
 
-        <Group justify="flex-end">
-          <Button
-            variant="default"
-            disabled={!dirty || update.isPending}
-            onClick={() => form.reset()}
-          >
-            Bekor qilish
-          </Button>
-          <Button type="submit" disabled={!dirty} loading={update.isPending}>
-            Saqlash
-          </Button>
-        </Group>
+        {/* Appears only when something changed, so a pristine form has no dead buttons. */}
+        <Collapse expanded={dirty}>
+          <Group justify="flex-end">
+            <Button
+              variant="default"
+              disabled={!dirty || update.isPending}
+              onClick={() => form.reset()}
+            >
+              Bekor qilish
+            </Button>
+            <Button type="submit" disabled={!dirty} loading={update.isPending}>
+              Saqlash
+            </Button>
+          </Group>
+        </Collapse>
       </Stack>
     </form>
   );

@@ -46,9 +46,15 @@ export function CreateProjectButton({ renderTrigger }: CreateProjectButtonProps)
           noValidate
         >
           <Stack>
-            <TextInput label="Nomi" data-autofocus {...form.getInputProps("name")} />
+            <TextInput
+              label="Nomi"
+              placeholder="Masalan: Buxgalteriya hujjatlari"
+              data-autofocus
+              {...form.getInputProps("name")}
+            />
             <Textarea
               label="Tavsif (ixtiyoriy)"
+              placeholder="Bu project nima uchun ishlatiladi?"
               autosize
               minRows={2}
               maxLength={PROJECT_DESCRIPTION_MAX}

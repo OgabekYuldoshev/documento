@@ -54,9 +54,15 @@ export function CreateTemplateButton({ projectId, renderTrigger }: CreateTemplat
           noValidate
         >
           <Stack>
-            <TextInput label="Nomi" data-autofocus {...form.getInputProps("name")} />
+            <TextInput
+              label="Nomi"
+              placeholder="Masalan: Shartnoma"
+              data-autofocus
+              {...form.getInputProps("name")}
+            />
             <Textarea
               label="Tavsif (ixtiyoriy)"
+              placeholder="Shablon qaysi hujjat uchun?"
               autosize
               minRows={2}
               {...form.getInputProps("description")}

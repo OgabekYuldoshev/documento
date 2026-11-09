@@ -35,16 +35,28 @@ export function CreateUserButton() {
           noValidate
         >
           <Stack>
-            <TextInput label="Ism familiya" data-autofocus {...form.getInputProps("name")} />
-            <TextInput label="Email" autoComplete="off" {...form.getInputProps("email")} />
+            <TextInput
+              label="Ism familiya"
+              placeholder="Masalan: Ali Valiyev"
+              data-autofocus
+              {...form.getInputProps("name")}
+            />
+            <TextInput
+              label="Email"
+              placeholder="ali@kompaniya.uz"
+              autoComplete="off"
+              {...form.getInputProps("email")}
+            />
             <PasswordInput
               label="Vaqtinchalik parol"
+              placeholder="Kamida 8 ta belgi"
               description="Kamida 8 ta belgi. Foydalanuvchiga xavfsiz yo'l bilan yetkazing."
               autoComplete="new-password"
               {...form.getInputProps("password")}
             />
             <Select
               label="Rol"
+              placeholder="Rolni tanlang"
               allowDeselect={false}
               data={roles.map((r) => ({ value: r, label: getRoleLabel(r) }))}
               {...form.getInputProps("role")}
