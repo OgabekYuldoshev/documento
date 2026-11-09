@@ -14,6 +14,7 @@ import type { TemplateDraft } from "@/entities/template";
 import { ConfirmModal } from "@/shared/ui";
 import { SchemaBuilder } from "@/widgets/schema-builder";
 import { useDraftEditor } from "../model/useDraftEditor";
+import { AssetsPanel } from "./AssetsPanel";
 import { PreviewPanel } from "./PreviewPanel";
 import { SourceEditor } from "./SourceEditor";
 
@@ -56,6 +57,7 @@ export function DraftForm({ projectId, templateId, draft }: Props) {
             <Tabs.Tab value="source">Kod (Typst)</Tabs.Tab>
             <Tabs.Tab value="schema">Schema</Tabs.Tab>
             <Tabs.Tab value="sample">Namuna ma'lumot</Tabs.Tab>
+            <Tabs.Tab value="assets">Fayllar</Tabs.Tab>
             <Tabs.Tab value="limits">Limitlar</Tabs.Tab>
           </Tabs.List>
 
@@ -101,6 +103,10 @@ export function DraftForm({ projectId, templateId, draft }: Props) {
                 Publish paytida namuna ma'lumot schemaga mos kelishi tekshiriladi.
               </Text>
             </Stack>
+          </Tabs.Panel>
+
+          <Tabs.Panel value="assets">
+            <AssetsPanel projectId={projectId} templateId={templateId} />
           </Tabs.Panel>
 
           <Tabs.Panel value="limits">
