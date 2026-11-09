@@ -1,4 +1,4 @@
-import { Badge, Box, Button, Center, Loader, Stack, Text } from "@mantine/core";
+import { Badge, Box, Button, Center, Loader, Stack, Tabs, Text } from "@mantine/core";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { getErrorMessage, trpc } from "@/shared/api";
@@ -106,21 +106,26 @@ export function TemplateEditor({
           Tahrirlashni boshlash
         </Button>
       }
-      tabs={[
-        {
-          value: "editor",
-          label: "Muharrir",
-          content: (
-            <Stack align="flex-start" gap="xs" maw={PANEL_WIDTH}>
-              <Text c="dimmed" size="sm">
-                Qoralama yo'q: joriy versiya o'zgarmas. Tahrirlash uchun undan yangi qoralama
-                yarating.
-              </Text>
-            </Stack>
-          ),
-        },
-        ...extraTabs,
-      ]}
-    />
+    >
+      <Stack gap="md" h="100%">
+        <Text c="dimmed" size="sm">
+          Qoralama yo'q: joriy versiya o'zgarmas. Tahrirlash uchun undan yangi qoralama yarating.
+        </Text>
+        <Tabs defaultValue={extraTabs[0]?.value} h="100%">
+          <Tabs.List mb="md">
+            {extraTabs.map((t) => (
+              <Tabs.Tab key={t.value} value={t.value}>
+                {t.label}
+              </Tabs.Tab>
+            ))}
+          </Tabs.List>
+          {extraTabs.map((t) => (
+            <Tabs.Panel key={t.value} value={t.value}>
+              {t.content}
+            </Tabs.Panel>
+          ))}
+        </Tabs>
+      </Stack>
+    </WorkspaceFrame>
   );
 }

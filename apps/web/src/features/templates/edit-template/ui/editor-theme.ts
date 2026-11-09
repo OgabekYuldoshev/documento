@@ -1,7 +1,8 @@
 import { EditorView } from "@codemirror/view";
+import { Prec } from "@uiw/react-codemirror";
 
 /** Aligns CodeMirror with the app surfaces so editors do not look like a foreign widget. */
-export const editorTheme = EditorView.theme({
+const theme = EditorView.theme({
   "&": { backgroundColor: "var(--app-surface)", height: "100%" },
   ".cm-gutters": {
     backgroundColor: "var(--app-subtle)",
@@ -9,6 +10,13 @@ export const editorTheme = EditorView.theme({
     color: "var(--mantine-color-dimmed)",
   },
   ".cm-activeLine, .cm-activeLineGutter": { backgroundColor: "var(--app-subtle)" },
-  ".cm-scroller": { fontFamily: "var(--mantine-font-family-monospace)", fontSize: "13px" },
+  ".cm-scroller": {
+    overflow: "auto",
+    fontFamily: "var(--mantine-font-family-monospace)",
+    fontSize: "13px",
+  },
   "&.cm-focused": { outline: "none" },
 });
+
+// Highest precedence so it beats the built-in light/dark theme backgrounds.
+export const editorTheme = Prec.highest(theme);

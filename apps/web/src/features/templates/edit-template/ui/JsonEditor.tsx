@@ -21,6 +21,9 @@ export function JsonEditor({ value, onChange, label }: Props) {
         onChange={onChange}
         theme={scheme}
         height="100%"
+        // The wrapper must be bounded too, otherwise the editor grows with its content
+        // instead of scrolling internally.
+        style={{ height: "100%" }}
         extensions={[json(), EditorView.lineWrapping, editorTheme]}
         basicSetup={{ foldGutter: true, autocompletion: false }}
         aria-label={label}

@@ -1,14 +1,8 @@
-import { Anchor, Box, Breadcrumbs, Group, Tabs, Text, Title } from "@mantine/core";
+import { Anchor, Box, Breadcrumbs, Group, Text, Title } from "@mantine/core";
 import type { ReactNode } from "react";
 import { Link } from "react-router";
 
-export type WorkspaceTab = {
-  value: string;
-  label: string;
-  content: ReactNode;
-  /** Content manages its own scrolling (editor panes); otherwise the panel scrolls. */
-  fill?: boolean;
-};
+export type WorkspaceTab = { value: string; label: string; content: ReactNode };
 
 type Props = {
   breadcrumbs: { label: string; to: string }[];
@@ -16,11 +10,18 @@ type Props = {
   description?: string;
   badges?: ReactNode;
   actions?: ReactNode;
-  tabs: WorkspaceTab[];
+  children: ReactNode;
 };
 
-/** Full-height template workspace: compact header on top, tabbed content filling the rest. */
-export function WorkspaceFrame({ breadcrumbs, title, description, badges, actions, tabs }: Props) {
+/** Full-height template workspace: compact header on top, content filling the rest. */
+export function WorkspaceFrame({
+  breadcrumbs,
+  title,
+  description,
+  badges,
+  actions,
+  children,
+}: Props) {
   return (
     <Box
       style={{
@@ -57,28 +58,7 @@ export function WorkspaceFrame({ breadcrumbs, title, description, badges, action
         {actions}
       </Group>
 
-      <Tabs
-        defaultValue={tabs[0]?.value}
-        keepMounted
-        style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}
-      >
-        <Tabs.List mb="md">
-          {tabs.map((tab) => (
-            <Tabs.Tab key={tab.value} value={tab.value}>
-              {tab.label}
-            </Tabs.Tab>
-          ))}
-        </Tabs.List>
-        {tabs.map((tab) => (
-          <Tabs.Panel
-            key={tab.value}
-            value={tab.value}
-            style={{ flex: 1, minHeight: 0, overflow: tab.fill ? "hidden" : "auto" }}
-          >
-            {tab.content}
-          </Tabs.Panel>
-        ))}
-      </Tabs>
+      <Box style={{ flex: 1, minHeight: 0 }}>{children}</Box>
     </Box>
   );
 }
