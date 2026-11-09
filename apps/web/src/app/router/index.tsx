@@ -1,0 +1,25 @@
+import { createBrowserRouter, RouterProvider } from "react-router";
+import { DashboardPage } from "@/pages/dashboard";
+import { LoginPage } from "@/pages/login";
+import { NotFoundPage } from "@/pages/not-found";
+import { UsersPage } from "@/pages/users";
+import { ROUTES } from "@/shared/config";
+import { AppShell } from "@/widgets/app-shell";
+import { requireAdmin, requireAuth, requireGuest } from "./guards";
+
+const router = createBrowserRouter([
+  { path: ROUTES.login, loader: requireGuest, element: <LoginPage /> },
+  {
+    loader: requireAuth,
+    element: <AppShell />,
+    children: [
+      { path: ROUTES.dashboard, element: <DashboardPage /> },
+      { path: ROUTES.users, loader: requireAdmin, element: <UsersPage /> },
+      { path: "*", element: <NotFoundPage /> },
+    ],
+  },
+]);
+
+export function AppRouter() {
+  return <RouterProvider router={router} />;
+}

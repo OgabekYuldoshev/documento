@@ -1,0 +1,19 @@
+{
+  "name": "@documento/shared",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "check-types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@documento/typescript-config": "workspace:*",
+    "typescript": "7.0.2"
+  }
+}

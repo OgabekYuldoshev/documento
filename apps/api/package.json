@@ -1,0 +1,39 @@
+{
+  "name": "@documento/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/app-router.ts"
+  },
+  "scripts": {
+    "dev": "tsx watch --env-file=.env src/index.ts",
+    "start": "tsx --env-file=.env src/index.ts",
+    "build": "tsc --noEmit",
+    "check-types": "tsc --noEmit",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx --env-file=.env src/db/migrate.ts",
+    "db:seed": "tsx --env-file=.env src/db/seed.ts",
+    "db:setup": "pnpm db:migrate && pnpm db:seed",
+    "db:studio": "drizzle-kit studio"
+  },
+  "dependencies": {
+    "@documento/shared": "workspace:*",
+    "@hono/node-server": "^2.1.6",
+    "@hono/trpc-server": "^0.4.2",
+    "@libsql/client": "^0.18.0",
+    "@trpc/server": "^11.25.0",
+    "better-auth": "^1.7.18",
+    "drizzle-orm": "^0.45.4",
+    "hono": "^4.13.17",
+    "superjson": "^2.2.6",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@documento/typescript-config": "workspace:*",
+    "@types/node": "^26.6.6",
+    "drizzle-kit": "^0.31.11",
+    "tsx": "^4.23.15",
+    "typescript": "7.0.2"
+  }
+}

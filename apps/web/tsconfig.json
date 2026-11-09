@@ -1,19 +1,8 @@
 {
-  "extends": "@repo/typescript-config/nextjs.json",
+  "extends": "@documento/typescript-config/react.json",
   "compilerOptions": {
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ],
-    "strictNullChecks": true
+    "types": ["vite/client", "node"],
+    "paths": { "@/*": ["./src/*"] }
   },
-  "include": [
-    "**/*.ts",
-    "**/*.tsx",
-    "next-env.d.ts",
-    "next.config.js",
-    ".next/types/**/*.ts"
-  ],
-  "exclude": ["node_modules"]
+  "include": ["src", "vite.config.ts"]
 }

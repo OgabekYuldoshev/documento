@@ -1,0 +1,4 @@
+{
+  "extends": "@documento/typescript-config/node.json",
+  "include": ["src", "drizzle.config.ts"]
+}

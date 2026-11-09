@@ -1,0 +1,4 @@
+{
+  "extends": "@documento/typescript-config/base.json",
+  "include": ["src"]
+}
