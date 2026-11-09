@@ -84,6 +84,13 @@ pnpm 11 blocks dependency build scripts: allowed ones are listed under `allowBui
 - Every template procedure extends `templateProcedure` (= `projectProcedure` + `{ templateId }`, NOT_FOUND across projects).
 - Web: `entities/template`, `features/templates/{create-template,edit-template}`, `widgets/{schema-builder,templates-table}`, `pages/template` (editor: Typst textarea, builder, sample JSON, limits, version history). CodeMirror, live preview and assets arrive in M3.
 
+## Render (phase 2, M3a done)
+
+- `modules/render/`: `typst-runner.ts` (one Typst child process per job in a temp dir `--root`, `--ignore-system-fonts --font-path $FONTS_DIR`, empty package dirs, blackholed proxy env, `@pkg` imports rejected up front, process-group kill on timeout, `prlimit --as/--cpu` when available: **macOS dev has no prlimit, memory limit is then NOT enforced**), `diagnostics.ts` (short format parser), `scheduler.ts` (strict-FIFO memory budget `RENDER_MEMORY_BUDGET_MB`), `render.service.ts` (`renderPreview`, `runPublishDryRun`).
+- `templates.preview` renders unsaved editor state (PDF inline base64, <= 20 MB). `publishChecks` runs the dry-run with **warnings as errors** (unknown font blocks publish); `PUBLISH_DRY_RUN=off` only in vitest.
+- Env: `TYPST_BIN`, `FONTS_DIR`, `RENDER_MEMORY_BUDGET_MB`. Typst tests are skipped unless Typst is installed: run `TYPST_BIN=/path/typst FONTS_DIR=/path/fonts npx vitest run` inside `apps/api` (turbo strips env vars). The starter template uses font Inter: it must exist in `FONTS_DIR`.
+- Web editor: CodeMirror 6 (`SourceEditor`) + `PreviewPanel` (iframe on a Blob URL, diagnostics with line numbers). Next (M3b): template assets, `generation` table + persistent queue.
+
 ## API architecture (`apps/api/src`) - feature-based, layered
 
 ```
