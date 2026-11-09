@@ -12,7 +12,8 @@
     "db:setup": "pnpm --filter @documento/api db:setup",
     "db:generate": "pnpm --filter @documento/api db:generate",
     "db:studio": "pnpm --filter @documento/api db:studio",
-    "prepare": "lefthook install"
+    "prepare": "lefthook install",
+    "test": "turbo run test"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.0",
