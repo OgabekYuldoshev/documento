@@ -1,77 +1,22 @@
-import { Badge, Group, Paper, Skeleton, Stack, Table, Text } from "@mantine/core";
 import { useQuery } from "@tanstack/react-query";
-import { useSession } from "@/entities/session";
-import { UserCell, UserRoleBadge } from "@/entities/user";
-import { DeleteUserButton } from "@/features/users/delete-user";
-import { ToggleBanButton } from "@/features/users/toggle-ban";
 import { trpc } from "@/shared/api";
-import { formatDate } from "@/shared/lib";
+import { DataTable } from "@/shared/ui";
+import { useUsersColumns } from "../model/use-users-columns";
 
 export function UsersTable() {
-  const { user: me } = useSession();
+  const columns = useUsersColumns();
   const { data, isPending, error } = useQuery(trpc.users.list.queryOptions());
 
-  if (isPending) {
-    return (
-      <Stack>
-        {Array.from({ length: 5 }, (_, i) => (
-          // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton rows
-          <Skeleton key={i} h={48} />
-        ))}
-      </Stack>
-    );
-  }
-  if (error) return <Text c="red">{error.message}</Text>;
-
-  // Rank-based: you may manage roles strictly below yours (mirrors the API rules).
-  const canManage = (role: string, id: string) =>
-    id !== me?.id && (me?.role === "superadmin" ? role !== "superadmin" : role === "user");
-
   return (
-    <Paper withBorder radius="md" style={{ overflow: "hidden" }}>
-      <Table.ScrollContainer minWidth={720}>
-        <Table verticalSpacing="sm" highlightOnHover>
-          <Table.Thead>
-            <Table.Tr>
-              <Table.Th>Foydalanuvchi</Table.Th>
-              <Table.Th>Rol</Table.Th>
-              <Table.Th>Holati</Table.Th>
-              <Table.Th>Qo'shilgan</Table.Th>
-              <Table.Th />
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {data.map((u) => (
-              <Table.Tr key={u.id}>
-                <Table.Td>
-                  <UserCell name={u.name} email={u.email} />
-                </Table.Td>
-                <Table.Td>
-                  <UserRoleBadge role={u.role} />
-                </Table.Td>
-                <Table.Td>
-                  <Badge variant="dot" color={u.banned ? "orange" : "teal"}>
-                    {u.banned ? "Bloklangan" : "Faol"}
-                  </Badge>
-                </Table.Td>
-                <Table.Td>
-                  <Text size="sm" c="dimmed">
-                    {formatDate(u.createdAt)}
-                  </Text>
-                </Table.Td>
-                <Table.Td>
-                  {canManage(u.role, u.id) && (
-                    <Group gap={4} justify="flex-end" wrap="nowrap">
-                      <ToggleBanButton id={u.id} name={u.name} banned={u.banned} />
-                      <DeleteUserButton id={u.id} name={u.name} />
-                    </Group>
-                  )}
-                </Table.Td>
-              </Table.Tr>
-            ))}
-          </Table.Tbody>
-        </Table>
-      </Table.ScrollContainer>
-    </Paper>
+    <DataTable
+      columns={columns}
+      data={data}
+      getRowId={(user) => user.id}
+      isLoading={isPending}
+      error={error?.message}
+      searchPlaceholder="Ism yoki email bo'yicha qidirish..."
+      initialSorting={[{ id: "createdAt", desc: true }]}
+      emptyTitle="Foydalanuvchilar topilmadi"
+    />
   );
 }

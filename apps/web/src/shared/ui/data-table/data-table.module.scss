@@ -1,0 +1,40 @@
+// Sortable header control: hover/active affordance not expressible via props.
+
+// `button.` raises specificity over Mantine's UnstyledButton (it sets its own font-size).
+button.sortButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: inherit;
+  white-space: nowrap;
+
+  @media (hover: hover) {
+    &:hover {
+      color: light-dark(var(--mantine-color-dark-9), var(--mantine-color-dark-0));
+    }
+  }
+
+  &[data-sorted] {
+    color: var(--mantine-color-brand-filled);
+  }
+}
+
+.sortIcon {
+  flex-shrink: 0;
+  opacity: 0.5;
+
+  [data-sorted] > & {
+    opacity: 1;
+  }
+}
+
+.row[data-clickable] {
+  cursor: pointer;
+}
