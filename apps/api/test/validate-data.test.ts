@@ -3,22 +3,25 @@ import { describe, expect, it } from "vitest";
 import { validateData } from "../src/modules/templates/validate-data";
 
 const schema: TemplateSchema = {
-  fields: [
-    { name: "name", type: "string", required: true, minLength: 2 },
-    { name: "price", type: "number", minimum: 0 },
-    { name: "kind", type: "enum", values: ["a", "b"] },
-    { name: "born", type: "date" },
-    { name: "photo", type: "image" },
-    {
-      name: "items",
+  type: "object",
+  properties: {
+    name: { type: "string", minLength: 2 },
+    price: { type: "number", minimum: 0 },
+    kind: { enum: ["a", "b"] },
+    born: { type: "string", format: "date" },
+    photo: { type: "string", format: "image" },
+    items: {
       type: "array",
       items: {
-        name: "item",
         type: "object",
-        fields: [{ name: "price", type: "number", required: true }],
+        properties: { price: { type: "number" } },
+        required: ["price"],
+        additionalProperties: false,
       },
     },
-  ],
+  },
+  required: ["name"],
+  additionalProperties: false,
 };
 
 const errs = (data: unknown, opts?: { maxPayloadBytes?: number }) => {
@@ -54,7 +57,7 @@ describe("validateData", () => {
     expect(e.map((x) => `${x.path}:${x.code}`).sort()).toEqual([
       "/born:format",
       "/kind:enum",
-      "/photo:pattern",
+      "/photo:format",
     ]);
   });
 

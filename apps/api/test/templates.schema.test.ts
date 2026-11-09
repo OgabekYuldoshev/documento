@@ -30,7 +30,7 @@ const ver = (templateId: string, number: number, status: "draft" | "published") 
   number,
   status,
   source: "x",
-  schema: { fields: [] },
+  schema: { type: "object", properties: {} },
   sampleData: {},
 });
 

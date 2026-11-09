@@ -10,6 +10,8 @@
     "check-types": "tsc --noEmit"
   },
   "dependencies": {
+    "@codemirror/lang-json": "^6.0.2",
+    "@codemirror/lint": "^6.9.7",
     "@codemirror/view": "^6.43.15",
     "@documento/api": "workspace:*",
     "@documento/shared": "workspace:*",

@@ -1,21 +1,12 @@
-import {
-  Button,
-  Group,
-  NumberInput,
-  SimpleGrid,
-  Stack,
-  Tabs,
-  Text,
-  Textarea,
-  Tooltip,
-} from "@mantine/core";
+import { Button, Group, NumberInput, SimpleGrid, Stack, Tabs, Text, Tooltip } from "@mantine/core";
 import { IconDeviceFloppy, IconRocket, IconWand } from "@tabler/icons-react";
 import type { TemplateDraft } from "@/entities/template";
 import { ConfirmModal } from "@/shared/ui";
-import { SchemaBuilder } from "@/widgets/schema-builder";
 import { useDraftEditor } from "../model/useDraftEditor";
 import { AssetsPanel } from "./AssetsPanel";
+import { JsonEditor } from "./JsonEditor";
 import { PreviewPanel } from "./PreviewPanel";
+import { SchemaEditor } from "./SchemaEditor";
 import { SourceEditor } from "./SourceEditor";
 
 type Props = { projectId: string; templateId: string; draft: TemplateDraft };
@@ -70,7 +61,10 @@ export function DraftForm({ projectId, templateId, draft }: Props) {
           </Tabs.Panel>
 
           <Tabs.Panel value="schema">
-            <SchemaBuilder value={form.schema} onChange={(schema) => patch({ schema })} />
+            <SchemaEditor
+              value={form.schemaText}
+              onChange={(schemaText) => patch({ schemaText })}
+            />
           </Tabs.Panel>
 
           <Tabs.Panel value="sample">
@@ -87,17 +81,11 @@ export function DraftForm({ projectId, templateId, draft }: Props) {
                   </Button>
                 </Tooltip>
               </Group>
-              <Textarea
-                aria-label="Namuna ma'lumot"
-                autosize
-                minRows={14}
-                maxRows={32}
-                spellCheck={false}
-                styles={{
-                  input: { fontFamily: "var(--mantine-font-family-monospace)", fontSize: 13 },
-                }}
+              <JsonEditor
+                label="Namuna ma'lumot"
+                minHeight="320px"
                 value={form.sampleText}
-                onChange={(e) => patch({ sampleText: e.currentTarget.value })}
+                onChange={(sampleText) => patch({ sampleText })}
               />
               <Text size="xs" c="dimmed">
                 Publish paytida namuna ma'lumot schemaga mos kelishi tekshiriladi.

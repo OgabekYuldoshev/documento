@@ -1,14 +1,14 @@
-import { sampleFromSchema, type TemplateSchema } from "@documento/shared";
 import { useMutation } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { TemplateDraft } from "@/entities/template";
 import { getErrorMessage, trpc } from "@/shared/api";
 import { notify } from "@/shared/lib";
 import { invalidateTemplateQueries } from "../../invalidate";
+import { sampleTextFromSchema } from "../ui/SchemaEditor";
 
 type Snapshot = {
   source: string;
-  schema: TemplateSchema;
+  schemaText: string;
   sampleText: string;
   renderTimeoutSec: number;
   maxPayloadKb: number;
@@ -16,7 +16,7 @@ type Snapshot = {
 
 const toSnapshot = (d: TemplateDraft): Snapshot => ({
   source: d.source,
-  schema: d.schema,
+  schemaText: JSON.stringify(d.schema, null, 2),
   sampleText: JSON.stringify(d.sampleData, null, 2),
   renderTimeoutSec: d.renderTimeoutSec,
   maxPayloadKb: d.maxPayloadKb,
@@ -52,7 +52,7 @@ function pdfUrl(base64: string): string {
   return URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
 }
 
-function parseSample(text: string): Record<string, unknown> | null {
+function parseObject(text: string): Record<string, unknown> | null {
   try {
     const value: unknown = JSON.parse(text || "{}");
     if (typeof value === "object" && value !== null && !Array.isArray(value)) {
@@ -91,10 +91,22 @@ export function useDraftEditor(projectId: string, templateId: string, draft: Tem
     [preview],
   );
 
-  async function runPreview() {
-    const sampleData = parseSample(form.sampleText);
-    if (!sampleData) {
-      notify.error("Namuna ma'lumot to'g'ri JSON obyekt emas");
+  const runId = useRef(0);
+
+  /** Renders the unsaved editor state; late answers from older runs are dropped. */
+  async function runPreview(manual = true) {
+    const id = ++runId.current;
+    const sampleData = parseObject(form.sampleText);
+    const schema = parseObject(form.schemaText);
+    if (!schema || !sampleData) {
+      setPreview({
+        kind: "error",
+        title: "JSON to'g'ri emas",
+        lines: [
+          ...(schema ? [] : ["Schema to'g'ri JSON obyekt emas"]),
+          ...(sampleData ? [] : ["Namuna ma'lumot to'g'ri JSON obyekt emas"]),
+        ],
+      });
       return;
     }
     try {
@@ -102,10 +114,11 @@ export function useDraftEditor(projectId: string, templateId: string, draft: Tem
         projectId,
         templateId,
         source: form.source,
-        schema: form.schema,
+        schema,
         sampleData,
         renderTimeoutSec: form.renderTimeoutSec,
       });
+      if (id !== runId.current) return;
       if (r.ok) {
         setPreview({
           kind: "ok",
@@ -121,21 +134,27 @@ export function useDraftEditor(projectId: string, templateId: string, draft: Tem
         });
       }
     } catch (error) {
-      notify.error(getErrorMessage(error));
+      if (manual && id === runId.current) notify.error(getErrorMessage(error));
     }
   }
 
+  // Live preview: re-render shortly after the author stops typing.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only the inputs below should retrigger
+  useEffect(() => {
+    const timer = setTimeout(() => void runPreview(false), 800);
+    return () => clearTimeout(timer);
+  }, [form.source, form.schemaText, form.sampleText, form.renderTimeoutSec]);
+
   /** Saves the form; returns false (after a toast) when the sample JSON is not an object. */
   async function save(): Promise<boolean> {
-    let sampleData: unknown;
-    try {
-      sampleData = JSON.parse(form.sampleText || "{}");
-    } catch {
-      notify.error("Namuna ma'lumot to'g'ri JSON emas");
+    const sampleData = parseObject(form.sampleText);
+    if (!sampleData) {
+      notify.error("Namuna ma'lumot to'g'ri JSON obyekt emas");
       return false;
     }
-    if (typeof sampleData !== "object" || sampleData === null || Array.isArray(sampleData)) {
-      notify.error("Namuna ma'lumot obyekt bo'lishi kerak");
+    const schema = parseObject(form.schemaText);
+    if (!schema) {
+      notify.error("Schema to'g'ri JSON obyekt emas");
       return false;
     }
     try {
@@ -143,8 +162,8 @@ export function useDraftEditor(projectId: string, templateId: string, draft: Tem
         projectId,
         templateId,
         source: form.source,
-        schema: form.schema,
-        sampleData: sampleData as Record<string, unknown>,
+        schema,
+        sampleData,
         renderTimeoutSec: form.renderTimeoutSec,
         maxPayloadKb: form.maxPayloadKb,
       });
@@ -189,7 +208,11 @@ export function useDraftEditor(projectId: string, templateId: string, draft: Tem
     publish,
     preview,
     previewing: previewMutation.isPending,
-    runPreview,
-    fillSample: () => patch({ sampleText: JSON.stringify(sampleFromSchema(form.schema), null, 2) }),
+    runPreview: () => runPreview(true),
+    fillSample: () => {
+      const text = sampleTextFromSchema(form.schemaText);
+      if (text) patch({ sampleText: text });
+      else notify.error("Schema to'g'ri JSON emas");
+    },
   };
 }

@@ -12,10 +12,13 @@ import { solidPng } from "./png";
 const hasTypst = spawnSync(env.TYPST_BIN, ["--version"]).status === 0;
 
 const SCHEMA: TemplateSchema = {
-  fields: [
-    { name: "name", type: "string", required: true },
-    { name: "logo", type: "image", required: true, formats: ["png"], maxMegapixels: 1 },
-  ],
+  type: "object",
+  properties: {
+    name: { type: "string" },
+    logo: { type: "string", format: "image", "x-image": { formats: ["png"], maxMegapixels: 1 } },
+  },
+  required: ["name", "logo"],
+  additionalProperties: false,
 };
 const SOURCE = '#let data = json("data.json")\n#image(data.logo, width: 20pt)\n#data.name';
 

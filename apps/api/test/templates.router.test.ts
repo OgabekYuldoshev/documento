@@ -9,10 +9,10 @@ const fail = (p: Promise<unknown>) =>
   );
 
 const schemaA: TemplateSchema = {
-  fields: [
-    { name: "name", type: "string", required: true },
-    { name: "age", type: "integer" },
-  ],
+  type: "object",
+  properties: { name: { type: "string" }, age: { type: "integer" } },
+  required: ["name"],
+  additionalProperties: false,
 };
 
 async function setup() {
@@ -62,9 +62,15 @@ describe("templates router", () => {
   it("rejects invalid schema and oversized source on save", async () => {
     const { save } = await setup();
     const bad = await fail(
-      save({ schema: { fields: [{ name: "a", type: "string", pattern: "(a+)+$" }] } }),
+      save({
+        schema: { type: "object", properties: { a: { type: "string", pattern: "(a+)+$" } } },
+      }),
     );
     expect(bad?.code).toBe("BAD_REQUEST");
+    const unknownFormat = await fail(
+      save({ schema: { type: "object", properties: { a: { type: "string", format: "nope" } } } }),
+    );
+    expect(unknownFormat?.message).toContain("Schema noto'g'ri");
     expect((await fail(save({ source: "x".repeat(512 * 1024 + 1) })))?.code).toBe("BAD_REQUEST");
   });
 
@@ -100,7 +106,14 @@ describe("templates router", () => {
     await save();
     await owner.templates.publish(ids);
     await owner.templates.getDraft(ids);
-    await save({ schema: { fields: [{ name: "name", type: "string", required: true }] } });
+    await save({
+      schema: {
+        type: "object",
+        properties: { name: { type: "string" } },
+        required: ["name"],
+        additionalProperties: false,
+      },
+    });
     const e = await fail(owner.templates.publish(ids));
     expect(e?.code).toBe("CONFLICT");
     expect(e?.message).toContain("/age");

@@ -178,7 +178,12 @@ export async function runTypst(job: RenderJob): Promise<RenderResult> {
   });
 
   if (outcome.spawnError) {
-    return fail("error", [{ severity: "error", message: "Typst ishga tushmadi" }]);
+    return fail("error", [
+      {
+        severity: "error",
+        message: `Typst ishga tushmadi (${env.TYPST_BIN}): ${outcome.spawnError}. Typst o'rnatilganini va TYPST_BIN to'g'riligini tekshiring`,
+      },
+    ]);
   }
   const diagnostics = parseDiagnostics(outcome.stderr, dir);
   if (outcome.timedOut) {

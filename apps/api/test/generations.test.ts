@@ -10,7 +10,12 @@ import { storage } from "../src/modules/storage/storage";
 import { callerFor, createUser } from "./factories";
 
 const hasTypst = spawnSync(env.TYPST_BIN, ["--version"]).status === 0;
-const SCHEMA: TemplateSchema = { fields: [{ name: "name", type: "string", required: true }] };
+const SCHEMA: TemplateSchema = {
+  type: "object",
+  properties: { name: { type: "string" } },
+  required: ["name"],
+  additionalProperties: false,
+};
 const SOURCE = '#let data = json("data.json")\nSalom, #data.name!';
 
 const fail = (p: Promise<unknown>) =>

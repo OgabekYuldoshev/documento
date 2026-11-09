@@ -1,4 +1,4 @@
-import { type TemplateSchema, templateSchemaSchema, toJsonSchema } from "@documento/shared";
+import { type TemplateSchema, templateSchemaSchema } from "@documento/shared";
 import { TRPCError } from "@trpc/server";
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
@@ -80,7 +80,7 @@ async function templateView(t: Awaited<ReturnType<typeof visibleTemplates>>[numb
     name: t.name,
     description: t.description,
     version: current?.version.number ?? null,
-    schema: current ? toJsonSchema(current.schema) : null,
+    schema: current ? current.schema : null,
   };
 }
 

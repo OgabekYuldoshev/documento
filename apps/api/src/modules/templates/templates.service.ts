@@ -1,10 +1,12 @@
 import { createHash } from "node:crypto";
 import {
   type BreakingChange,
+  DEFAULT_TEMPLATE_JSON_SCHEMA,
   DEFAULT_TEMPLATE_SOURCE,
   diffSchemas,
   type SaveDraftInput,
   TEMPLATE_SOURCE_MAX_BYTES,
+  type TemplateSchema,
   templateSchemaSchema,
 } from "@documento/shared";
 import { TRPCError } from "@trpc/server";
@@ -14,11 +16,23 @@ import type { Project, Template, TemplateVersion } from "../../db/schema";
 import { slugify } from "../projects/slug";
 import { runPublishDryRun } from "../render/render.service";
 import { templatesRepository as repo } from "./templates.repository";
-import { validateData } from "./validate-data";
+import { assertSchemaCompiles, SchemaDefinitionError, validateData } from "./validate-data";
 
 type Actor = { id: string };
 
 const MAX_SLUG_ATTEMPTS = 20;
+
+/** Ajv (strict) is the authority on whether the author's JSON Schema is usable. */
+export function assertSchemaDefinition(schema: TemplateSchema) {
+  try {
+    assertSchemaCompiles(schema);
+  } catch (error) {
+    if (error instanceof SchemaDefinitionError) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: `Schema noto'g'ri: ${error.message}` });
+    }
+    throw error;
+  }
+}
 
 const err = (code: "NOT_FOUND" | "CONFLICT" | "BAD_REQUEST", message: string) =>
   new TRPCError({ code, message });
@@ -86,7 +100,7 @@ export const templatesService = {
           number: 1,
           status: "draft",
           source: DEFAULT_TEMPLATE_SOURCE,
-          schema: { fields: [] },
+          schema: DEFAULT_TEMPLATE_JSON_SCHEMA,
           sampleData: {},
         },
         tx,
@@ -131,6 +145,7 @@ export const templatesService = {
     if (Buffer.byteLength(input.source) > TEMPLATE_SOURCE_MAX_BYTES) {
       throw err("BAD_REQUEST", "Kod juda katta");
     }
+    assertSchemaDefinition(input.schema);
     // Sample data is only enforced at publish time, so the builder can be edited freely.
     return repo.updateVersion(draft.id, {
       source: input.source,
@@ -151,6 +166,7 @@ export const templatesService = {
 
     const parsed = templateSchemaSchema.safeParse(draft.schema);
     if (!parsed.success) throw err("BAD_REQUEST", "Schema noto'g'ri");
+    assertSchemaDefinition(parsed.data);
     const sample = validateData(parsed.data, draft.sampleData);
     if (!sample.ok) {
       throw err(

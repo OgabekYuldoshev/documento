@@ -9,10 +9,10 @@ import { callerFor, createUser } from "./factories";
 
 const hasTypst = spawnSync(env.TYPST_BIN, ["--version"]).status === 0;
 const SCHEMA: TemplateSchema = {
-  fields: [
-    { name: "name", type: "string", required: true },
-    { name: "age", type: "integer", minimum: 0 },
-  ],
+  type: "object",
+  properties: { name: { type: "string" }, age: { type: "integer", minimum: 0 } },
+  required: ["name"],
+  additionalProperties: false,
 };
 const SOURCE = '#let data = json("data.json")\nSalom, #data.name!';
 

@@ -10,7 +10,12 @@ import { solidPng } from "./png";
 
 const hasTypst = spawnSync(env.TYPST_BIN, ["--version"]).status === 0;
 
-const schema: TemplateSchema = { fields: [{ name: "name", type: "string", required: true }] };
+const schema: TemplateSchema = {
+  type: "object",
+  properties: { name: { type: "string" } },
+  required: ["name"],
+  additionalProperties: false,
+};
 const source = '#let data = json("data.json")\nSalom, #data.name!';
 const version = (over: Partial<{ source: string; sampleData: unknown }> = {}) => ({
   source,

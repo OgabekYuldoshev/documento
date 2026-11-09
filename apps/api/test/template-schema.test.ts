@@ -1,103 +1,122 @@
 import {
+  collectImages,
   diffSchemas,
-  type FieldDef,
   sampleFromSchema,
   type TemplateSchema,
   templateSchemaSchema,
-  toJsonSchema,
+  transformImages,
 } from "@documento/shared";
 import { describe, expect, it } from "vitest";
+import { assertSchemaCompiles, validateData } from "../src/modules/templates/validate-data";
 
-const parse = (fields: FieldDef[]) => templateSchemaSchema.safeParse({ fields });
-const str = (name: string, extra: object = {}): FieldDef =>
-  ({ name, type: "string", ...extra }) as FieldDef;
+const obj = (properties: Record<string, unknown>, required: string[] = []): TemplateSchema => ({
+  type: "object",
+  properties,
+  ...(required.length ? { required } : {}),
+});
+const ok = (schema: TemplateSchema) => templateSchemaSchema.safeParse(schema).success;
+const str = (extra: object = {}) => ({ type: "string", ...extra });
 
-describe("template schema DSL", () => {
-  it("compiles to strict JSON Schema", () => {
-    const schema: TemplateSchema = {
-      fields: [
-        str("name", { required: true, maxLength: 50 }),
-        { name: "born", type: "date" },
-        { name: "photo", type: "image" },
-        {
-          name: "items",
-          type: "array",
-          items: { name: "item", type: "object", fields: [str("sku", { required: true })] },
-        },
-      ],
-    };
-    expect(parse(schema.fields).success).toBe(true);
-    type Js = {
-      additionalProperties: boolean;
-      required: string[];
-      properties: Record<
-        string,
-        Record<string, unknown> & { items?: { additionalProperties: boolean } }
-      >;
-    };
-    const js = toJsonSchema(schema) as unknown as Js;
-    expect(js.additionalProperties).toBe(false);
-    expect(js.required).toEqual(["name"]);
-    expect(js.properties.born).toEqual({ type: "string", format: "date" });
-    expect(String(js.properties.photo?.pattern)).toMatch(/^\^upl_/);
-    expect(js.properties.items?.items?.additionalProperties).toBe(false);
+describe("template JSON Schema rules", () => {
+  it("accepts a normal schema", () => {
+    expect(
+      ok(
+        obj(
+          { name: str({ maxLength: 50 }), born: str({ format: "date" }), tags: { type: "array" } },
+          ["name"],
+        ),
+      ),
+    ).toBe(true);
   });
 
   it.each([
-    ["nested quantifier", str("a", { pattern: "(a+)+$" })],
-    ["long pattern", str("a", { pattern: "a".repeat(201) })],
-    ["invalid regex", str("a", { pattern: "[" })],
-    ["backreference", str("a", { pattern: "(a)\\1" })],
-    ["__proto__ name", str("__proto__")],
-    ["bad name", str("1abc")],
-    ["min > max", str("a", { minLength: 5, maxLength: 2 })],
-  ])("rejects %s", (_, field) => {
-    expect(parse([field]).success).toBe(false);
+    ["nested quantifier", obj({ a: str({ pattern: "(a+)+$" }) })],
+    ["long pattern", obj({ a: str({ pattern: "a".repeat(201) }) })],
+    ["invalid regex", obj({ a: str({ pattern: "[" }) })],
+    ["backreference", obj({ a: str({ pattern: "(a)\\1" }) })],
+    [
+      "__proto__ name",
+      JSON.parse('{"type":"object","properties":{"__proto__":{"type":"string"}}}'),
+    ],
+    ["bad name", obj({ "1abc": str() })],
+    ["$ref", obj({ a: { $ref: "#/definitions/x" } })],
+    ["non-object root", { type: "array" }],
+    ["other draft", { ...obj({}), $schema: "https://json-schema.org/draft/2020-12/schema" }],
+  ])("rejects %s", (_, schema) => {
+    expect(ok(schema as TemplateSchema)).toBe(false);
   });
 
-  it("rejects duplicate names, depth 6 and 201 fields", () => {
-    expect(parse([str("a"), str("a")]).success).toBe(false);
-    let deep: FieldDef = str("leaf");
-    for (let i = 0; i < 5; i++) deep = { name: `o${i}`, type: "object", fields: [deep] };
-    expect(parse([deep]).success).toBe(false);
-    const many = Array.from({ length: 201 }, (_, i) => str(`f${i}`));
-    expect(parse(many).success).toBe(false);
+  it("rejects depth 6 and 201 fields", () => {
+    let deep: TemplateSchema = obj({ leaf: str() });
+    for (let i = 0; i < 5; i++) deep = obj({ [`o${i}`]: deep });
+    expect(ok(deep)).toBe(false);
+    const many = Object.fromEntries(Array.from({ length: 201 }, (_, i) => [`f${i}`, str()]));
+    expect(ok(obj(many))).toBe(false);
+  });
+});
+
+describe("Ajv strict + ajv-formats", () => {
+  it("rejects schemas Ajv cannot compile", () => {
+    expect(() => assertSchemaCompiles(obj({ a: { type: "strng" } }))).toThrow();
+    expect(() => assertSchemaCompiles(obj({ a: str({ format: "nope" }) }))).toThrow();
+    expect(() => assertSchemaCompiles(obj({ a: str({ typo: 1 }) }))).toThrow();
   });
 
-  it("accepts a safe pattern and unknown keys are rejected", () => {
-    expect(parse([str("a", { pattern: "^[A-Z]{2}\\d{4}$" })]).success).toBe(true);
-    expect(parse([{ ...str("a"), evil: 1 } as FieldDef]).success).toBe(false);
+  it.each([
+    ["email", "a@b.co", "a@"],
+    ["uuid", "123e4567-e89b-12d3-a456-426614174000", "123"],
+    ["uri", "https://example.com/x", "not a uri"],
+    ["hostname", "example.com", "-bad-"],
+    ["ipv4", "192.168.0.1", "999.1.1.1"],
+    ["ipv6", "2001:db8::1", "zzz"],
+    ["date", "2024-02-29", "2023-02-29"],
+    ["time", "09:30:00Z", "25:00:00Z"],
+    ["date-time", "2024-01-31T09:00:00Z", "2024-01-31"],
+    ["duration", "P1DT2H", "1 day"],
+    ["json-pointer", "/a/b", "a/b"],
+    ["image", "upl_abc123", "../etc/passwd"],
+  ])("format %s", (format, good, bad) => {
+    const schema = obj({ v: str({ format }) });
+    expect(validateData(schema, { v: good }).ok).toBe(true);
+    const r = validateData(schema, { v: bad });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.errors[0]).toMatchObject({ path: "/v", code: "format" });
   });
 
+  it("supports union types, oneOf and const", () => {
+    const schema = obj({
+      n: { type: ["string", "null"] },
+      k: { oneOf: [{ const: "a" }, { const: "b" }] },
+    });
+    expect(validateData(schema, { n: null, k: "a" }).ok).toBe(true);
+    expect(validateData(schema, { n: 1, k: "c" }).ok).toBe(false);
+  });
+});
+
+describe("samples and diff", () => {
   it("samples every field with the right type", () => {
-    const fields: FieldDef[] = [
-      str("s", { format: "email" }),
-      { name: "n", type: "number", minimum: 5 },
-      { name: "b", type: "boolean" },
-      { name: "e", type: "enum", values: ["x", "y"] },
-      { name: "arr", type: "array", items: { name: "item", type: "integer" } },
-    ];
-    expect(sampleFromSchema({ fields })).toEqual({
+    const schema = obj({
+      s: str({ format: "email" }),
+      n: { type: "number", minimum: 5 },
+      b: { type: "boolean" },
+      e: { enum: ["x", "y"] },
+      arr: { type: "array", items: { type: "integer" } },
+      d: str({ format: "date" }),
+    });
+    expect(sampleFromSchema(schema)).toEqual({
       s: "user@example.com",
       n: 5,
       b: false,
       e: "x",
       arr: [0],
+      d: "2024-01-31",
     });
+    expect(validateData(schema, sampleFromSchema(schema)).ok).toBe(true);
   });
 
   it("reports breaking changes only", () => {
-    const prev: TemplateSchema = {
-      fields: [str("a", { required: true }), str("b"), { name: "c", type: "number" }],
-    };
-    const next: TemplateSchema = {
-      fields: [
-        str("b", { required: true }),
-        { name: "c", type: "string" },
-        str("d", { required: true }),
-        str("opt"),
-      ],
-    };
+    const prev = obj({ a: str(), b: str(), c: { type: "number" } }, ["a"]);
+    const next = obj({ b: str(), c: str(), d: str(), opt: str() }, ["b", "d"]);
     const kinds = diffSchemas(prev, next)
       .map((x) => `${x.kind}:${x.path}`)
       .sort();
@@ -107,40 +126,37 @@ describe("template schema DSL", () => {
       "required_added:/d",
       "type_changed:/c",
     ]);
-    expect(diffSchemas(prev, { fields: [...prev.fields, str("extra")] })).toEqual([]);
+    expect(diffSchemas(prev, obj({ ...(prev.properties as object), extra: str() }, ["a"]))).toEqual(
+      [],
+    );
   });
 });
 
 describe("image references", () => {
-  const schema: TemplateSchema = {
-    fields: [
-      { name: "photo", type: "image" },
-      {
-        name: "pages",
-        type: "array",
-        items: { name: "item", type: "object", fields: [{ name: "scan", type: "image" }] },
-      },
-      { name: "meta", type: "object", fields: [{ name: "stamp", type: "image" }] },
-    ],
-  };
+  const image = { type: "string", format: "image" };
+  const schema = obj({
+    photo: image,
+    pages: { type: "array", items: obj({ scan: image }) },
+    meta: obj({ stamp: { ...image, "x-image": { formats: ["png"] } } }),
+  });
   const data = {
     photo: "upl_a1b2c3",
     pages: [{ scan: "upl_p1xxxx" }, { scan: "upl_p2xxxx" }],
     meta: { stamp: "upl_s1xxxx" },
   };
 
-  it("collects ids with JSON-pointer paths", async () => {
-    const { collectImages } = await import("@documento/shared");
-    expect(collectImages(schema, data).map((r) => `${r.path}=${r.id}`)).toEqual([
+  it("collects ids with JSON-pointer paths and field constraints", () => {
+    const refs = collectImages(schema, data);
+    expect(refs.map((r) => `${r.path}=${r.id}`)).toEqual([
       "/photo=upl_a1b2c3",
       "/pages/0/scan=upl_p1xxxx",
       "/pages/1/scan=upl_p2xxxx",
       "/meta/stamp=upl_s1xxxx",
     ]);
+    expect(refs[3]?.field).toEqual({ formats: ["png"] });
   });
 
-  it("replaces ids in a copy and leaves the input untouched", async () => {
-    const { transformImages } = await import("@documento/shared");
+  it("replaces ids in a copy and leaves the input untouched", () => {
     const out = transformImages(schema, data, (r) => `uploads/${r.id}.png`);
     expect(out.data).toMatchObject({
       photo: "uploads/upl_a1b2c3.png",
