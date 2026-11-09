@@ -13,6 +13,8 @@ export type RenderJob = {
   memoryMb: number;
   /** Template files, exposed to Typst as `assets/<name>` (fonts are also added as font paths). */
   assets?: { name: string; kind: "image" | "font"; path: string }[];
+  /** Extra files copied into the job dir; `name` is a relative path such as `uploads/<id>.png`. */
+  extraFiles?: { name: string; path?: string; bytes?: Buffer }[];
   /** Treat Typst warnings (e.g. unknown font) as failures. */
   strictWarnings?: boolean;
 };
@@ -99,6 +101,15 @@ export async function runTypst(job: RenderJob): Promise<RenderResult> {
   for (const asset of assets) {
     await copyFile(asset.path, join(dir, asset.kind === "font" ? "fonts" : "assets", asset.name));
     if (asset.kind === "font") await copyFile(asset.path, join(dir, "assets", asset.name));
+  }
+
+  for (const file of job.extraFiles ?? []) {
+    if (!/^uploads\/[A-Za-z0-9._-]+$/.test(file.name) || file.name.includes("..")) {
+      throw new Error(`invalid extra file name: ${file.name}`);
+    }
+    await mkdir(join(dir, "uploads"), { recursive: true });
+    if (file.path) await copyFile(file.path, join(dir, file.name));
+    else await writeFile(join(dir, file.name), file.bytes ?? Buffer.alloc(0));
   }
 
   const typstArgs = [

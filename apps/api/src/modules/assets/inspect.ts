@@ -73,15 +73,10 @@ function jpegSize(b: Buffer) {
   return null;
 }
 
-/** Validates an upload by content (not by trusting the name): format, pixel budget, SVG sanity. */
-export function inspectAsset(fileName: string, bytes: Uint8Array): AssetInfo {
-  const ext = fileName.split(".").pop()?.toLowerCase() ?? "";
-  const expected = EXTENSIONS[ext];
-  if (!expected) throw new AssetError("Ruxsat etilgan formatlar: png, jpg, svg, ttf, otf");
+/** Content-based inspection (never trusts names): format, pixel budget, SVG sanity. */
+export function inspectContent(bytes: Uint8Array): AssetInfo {
   const format = detect(bytes);
-  if (!format || format !== expected) {
-    throw new AssetError("Fayl mazmuni kengaytmasiga mos kelmaydi");
-  }
+  if (!format) throw new AssetError("Fayl formati qo'llab-quvvatlanmaydi");
   const kind: AssetKind = format === "ttf" || format === "otf" ? "font" : "image";
   const info: AssetInfo = { kind, format, mime: MIME[format] };
 
@@ -102,4 +97,16 @@ export function inspectAsset(fileName: string, bytes: Uint8Array): AssetInfo {
     if (/<!ENTITY/i.test(text)) throw new AssetError("SVG ichida ENTITY ruxsat etilmagan");
   }
   return info;
+}
+
+/** Template assets: the extension must match the detected content. */
+export function inspectAsset(fileName: string, bytes: Uint8Array): AssetInfo {
+  const ext = fileName.split(".").pop()?.toLowerCase() ?? "";
+  const expected = EXTENSIONS[ext];
+  if (!expected) throw new AssetError("Ruxsat etilgan formatlar: png, jpg, svg, ttf, otf");
+  const format = detect(bytes);
+  if (!format || format !== expected) {
+    throw new AssetError("Fayl mazmuni kengaytmasiga mos kelmaydi");
+  }
+  return inspectContent(bytes);
 }

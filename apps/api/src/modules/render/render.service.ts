@@ -1,9 +1,10 @@
 import { readFile } from "node:fs/promises";
-import { type TemplateSchema, templateSchemaSchema } from "@documento/shared";
+import { type TemplateSchema, templateSchemaSchema, transformImages } from "@documento/shared";
 import { TRPCError } from "@trpc/server";
 import { env } from "../../config/env";
 import { assetsService } from "../assets/assets.service";
 import { type DataError, validateData } from "../templates/validate-data";
+import { PLACEHOLDER_NAME, PLACEHOLDER_PNG } from "../uploads/placeholder";
 import type { Diagnostic } from "./diagnostics";
 import { createScheduler } from "./scheduler";
 import { runTypst } from "./typst-runner";
@@ -22,6 +23,11 @@ export type RenderInput = {
   strictWarnings?: boolean;
   maxPayloadBytes?: number;
   assets?: Parameters<typeof runTypst>[0]["assets"];
+  /**
+   * Image fields: `files` maps upload id -> stored file (real renders); `placeholder` swaps every
+   * image field for a built-in PNG (preview and publish dry-run, where no upload exists).
+   */
+  images?: { placeholder: true } | { files: Map<string, { ext: string; path: string }> };
 };
 
 export type RenderFailure =
@@ -61,13 +67,35 @@ export async function renderToFile(input: RenderInput): Promise<FileResult> {
   });
   if (!checked.ok) return { ok: false, kind: "validation", errors: checked.errors };
 
+  const extraFiles: NonNullable<Parameters<typeof runTypst>[0]["extraFiles"]> = [];
+  let data = checked.data;
+  const images = input.images;
+  if (images) {
+    const used = new Set<string>();
+    data = transformImages(input.schema, checked.data, (ref) => {
+      if ("placeholder" in images) {
+        used.add(PLACEHOLDER_NAME);
+        return PLACEHOLDER_NAME;
+      }
+      const file = images.files.get(ref.id);
+      if (!file) throw new Error(`upload ${ref.id} not resolved`);
+      const name = `uploads/${ref.id}.${file.ext}`;
+      if (!used.has(name)) extraFiles.push({ name, path: file.path });
+      used.add(name);
+      return name;
+    }).data;
+    if (used.has(PLACEHOLDER_NAME))
+      extraFiles.push({ name: PLACEHOLDER_NAME, bytes: PLACEHOLDER_PNG });
+  }
+
   const memoryMb = input.memoryMb ?? DEFAULT_RENDER_MEMORY_MB;
   let result: Awaited<ReturnType<typeof runTypst>>;
   try {
     result = await scheduler.run(memoryMb, () =>
       runTypst({
         source: input.source,
-        data: checked.data,
+        data,
+        extraFiles,
         timeoutSec: input.timeoutSec,
         memoryMb,
         strictWarnings: input.strictWarnings,
@@ -135,6 +163,7 @@ export async function runPublishDryRun(version: {
     timeoutSec: version.renderTimeoutSec,
     strictWarnings: true,
     assets: version.templateId ? await assetsService.forRender(version.templateId) : undefined,
+    images: { placeholder: true },
     maxPayloadBytes: version.maxPayloadKb * 1024,
   });
   if (result.ok) return;

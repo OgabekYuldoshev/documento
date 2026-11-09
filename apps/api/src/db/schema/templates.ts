@@ -169,3 +169,28 @@ export const apiKey = sqliteTable(
 );
 
 export type ApiKey = typeof apiKey.$inferSelect;
+
+/** Short-lived images uploaded by integrators; referenced from `image` fields by id (`upl_…`). */
+export const upload = sqliteTable(
+  "upload",
+  {
+    /** Public id, e.g. `upl_3f9a…`. */
+    id: text("id").primaryKey(),
+    projectId: text("project_id")
+      .notNull()
+      .references(() => project.id, { onDelete: "restrict" }),
+    apiKeyId: text("api_key_id"),
+    format: text("format", { enum: ["png", "jpeg", "svg"] }).notNull(),
+    mime: text("mime").notNull(),
+    size: integer("size").notNull(),
+    sha256: text("sha256").notNull(),
+    width: integer("width"),
+    height: integer("height"),
+    storageKey: text("storage_key").notNull(),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).default(now).notNull(),
+    expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (t) => [index("upload_project_idx").on(t.projectId), index("upload_expires_idx").on(t.expiresAt)],
+);
+
+export type Upload = typeof upload.$inferSelect;

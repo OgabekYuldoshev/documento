@@ -6,6 +6,7 @@ import { projectsService } from "../projects/projects.service";
 import { storage } from "../storage/storage";
 import { templatesRepository } from "../templates/templates.repository";
 import { validateData } from "../templates/validate-data";
+import { uploadsService } from "../uploads/uploads.service";
 import { generationsRepository as repo } from "./generations.repository";
 import { jobKey, kick } from "./queue";
 
@@ -93,11 +94,15 @@ export const generationsService = {
     const checked = validateData(schema, input.data, {
       maxPayloadBytes: version.maxPayloadKb * 1024,
     });
-    if (!checked.ok) {
+    const images = checked.ok
+      ? await uploadsService.resolveImages(project.id, schema, checked.data, { extend: true })
+      : null;
+    const failed = !checked.ok ? checked.errors : images && !images.ok ? images.errors : null;
+    if (!checked.ok || failed) {
       const now = new Date();
       const row = await insertOrReplay(base, {
         status: "validation_error",
-        errorJson: { ok: false, kind: "validation", errors: checked.errors },
+        errorJson: { ok: false, kind: "validation", errors: failed ?? [] },
         finishedAt: now,
         durationMs: 0,
       });

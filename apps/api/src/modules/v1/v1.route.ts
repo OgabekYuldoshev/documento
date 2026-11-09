@@ -9,6 +9,7 @@ import { generationsRepository } from "../generations/generations.repository";
 import { generationsService } from "../generations/generations.service";
 import { pdfAvailability, streamPdf } from "../generations/pdf-response";
 import { templatesRepository } from "../templates/templates.repository";
+import { UploadError, uploadsService } from "../uploads/uploads.service";
 import { buildOpenApi } from "./openapi";
 import { problem } from "./problem";
 import { rateLimiter } from "./rate-limit";
@@ -226,6 +227,25 @@ v1.post(
     return streamPdf(row, "attachment");
   },
 );
+
+// ---------- uploads ----------
+
+/** Raw binary body (Content-Type: image/png|jpeg|svg+xml); the file is validated by content, not by header. */
+v1.post("/uploads", async (c) => {
+  const length = Number(c.req.header("content-length"));
+  try {
+    const result = await uploadsService.receive(
+      c.get("project"),
+      c.get("key").id,
+      c.req.raw.body,
+      Number.isFinite(length) && length > 0 ? length : undefined,
+    );
+    return c.json(result, 201);
+  } catch (error) {
+    if (error instanceof UploadError) return problem(c, error.status, error.type, error.message);
+    throw error;
+  }
+});
 
 // ---------- documents ----------
 

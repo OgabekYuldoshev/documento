@@ -110,3 +110,43 @@ describe("template schema DSL", () => {
     expect(diffSchemas(prev, { fields: [...prev.fields, str("extra")] })).toEqual([]);
   });
 });
+
+describe("image references", () => {
+  const schema: TemplateSchema = {
+    fields: [
+      { name: "photo", type: "image" },
+      {
+        name: "pages",
+        type: "array",
+        items: { name: "item", type: "object", fields: [{ name: "scan", type: "image" }] },
+      },
+      { name: "meta", type: "object", fields: [{ name: "stamp", type: "image" }] },
+    ],
+  };
+  const data = {
+    photo: "upl_a1b2c3",
+    pages: [{ scan: "upl_p1xxxx" }, { scan: "upl_p2xxxx" }],
+    meta: { stamp: "upl_s1xxxx" },
+  };
+
+  it("collects ids with JSON-pointer paths", async () => {
+    const { collectImages } = await import("@documento/shared");
+    expect(collectImages(schema, data).map((r) => `${r.path}=${r.id}`)).toEqual([
+      "/photo=upl_a1b2c3",
+      "/pages/0/scan=upl_p1xxxx",
+      "/pages/1/scan=upl_p2xxxx",
+      "/meta/stamp=upl_s1xxxx",
+    ]);
+  });
+
+  it("replaces ids in a copy and leaves the input untouched", async () => {
+    const { transformImages } = await import("@documento/shared");
+    const out = transformImages(schema, data, (r) => `uploads/${r.id}.png`);
+    expect(out.data).toMatchObject({
+      photo: "uploads/upl_a1b2c3.png",
+      pages: [{ scan: "uploads/upl_p1xxxx.png" }, { scan: "uploads/upl_p2xxxx.png" }],
+    });
+    expect(data.photo).toBe("upl_a1b2c3");
+    expect(transformImages(schema, { photo: 5 }, () => "x").refs).toEqual([]);
+  });
+});

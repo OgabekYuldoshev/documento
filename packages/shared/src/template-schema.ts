@@ -370,3 +370,53 @@ export function diffSchemas(prev: TemplateSchema, next: TemplateSchema): Breakin
   }
   return changes;
 }
+
+// ---------- image references ----------
+
+export type ImageField = Extract<FieldDef, { type: "image" }>;
+export type ImageRef = { path: string; id: string; field: ImageField };
+
+const isRecord = (v: unknown): v is Record<string, unknown> =>
+  typeof v === "object" && v !== null && !Array.isArray(v);
+
+function visitValue(
+  field: FieldDef,
+  holder: Record<string, unknown> | unknown[],
+  key: string | number,
+  path: string,
+  fn: (ref: ImageRef) => string,
+  refs: ImageRef[],
+) {
+  const value = (holder as Record<string | number, unknown>)[key];
+  if (field.type === "image" && typeof value === "string") {
+    const ref = { path, id: value, field };
+    refs.push(ref);
+    (holder as Record<string | number, unknown>)[key] = fn(ref);
+  } else if (field.type === "array" && Array.isArray(value)) {
+    for (let i = 0; i < value.length; i++) {
+      visitValue(field.items, value, i, `${path}/${i}`, fn, refs);
+    }
+  } else if (field.type === "object" && isRecord(value)) {
+    for (const child of field.fields)
+      visitValue(child, value, child.name, `${path}/${child.name}`, fn, refs);
+  }
+}
+
+/**
+ * Finds every `image` value (id string) in already schema-valid data and replaces it with
+ * `fn(ref)`. Returns a transformed copy plus the references; the input is not mutated.
+ */
+export function transformImages(
+  schema: TemplateSchema,
+  data: unknown,
+  fn: (ref: ImageRef) => string,
+): { data: Record<string, unknown>; refs: ImageRef[] } {
+  const copy = (isRecord(data) ? JSON.parse(JSON.stringify(data)) : {}) as Record<string, unknown>;
+  const refs: ImageRef[] = [];
+  for (const field of schema.fields)
+    visitValue(field, copy, field.name, `/${field.name}`, fn, refs);
+  return { data: copy, refs };
+}
+
+export const collectImages = (schema: TemplateSchema, data: unknown): ImageRef[] =>
+  transformImages(schema, data, (ref) => ref.id).refs;

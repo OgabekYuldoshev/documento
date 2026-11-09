@@ -50,6 +50,13 @@
       "when": 1794224213935,
       "tag": "0006_pretty_micromacro",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1794224832570,
+      "tag": "0007_gorgeous_post",
+      "breakpoints": true
     }
   ]
 }

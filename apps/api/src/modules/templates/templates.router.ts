@@ -44,6 +44,7 @@ export const templatesRouter = router({
       data: input.sampleData,
       timeoutSec: input.renderTimeoutSec,
       assets: await assetsService.forRender(ctx.template.id),
+      images: { placeholder: true },
     });
     if (!result.ok) return result;
     return {

@@ -23,6 +23,24 @@ export function buildOpenApi(projectName: string, templates: TemplateView[]) {
         },
       },
     },
+    "/v1/uploads": {
+      post: {
+        summary: "Upload an image for `image` fields (raw body, expires after about an hour)",
+        requestBody: {
+          required: true,
+          content: {
+            "image/png": { schema: { type: "string", format: "binary" } },
+            "image/jpeg": { schema: { type: "string", format: "binary" } },
+            "image/svg+xml": { schema: { type: "string", format: "binary" } },
+          },
+        },
+        responses: {
+          "201": { description: "{ uploadId, mime, bytes, width, height, expiresAt }" },
+          "400": problemResponse("Not a valid image"),
+          "413": problemResponse("Too large or project quota exceeded"),
+        },
+      },
+    },
     "/v1/documents/{id}": {
       get: {
         summary: "Document status",

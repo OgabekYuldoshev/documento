@@ -7,6 +7,7 @@ import { projectsRepository } from "../projects/projects.repository";
 import { renderToFile } from "../render/render.service";
 import { storage } from "../storage/storage";
 import { templatesRepository } from "../templates/templates.repository";
+import { uploadsService } from "../uploads/uploads.service";
 import { generationsRepository as repo } from "./generations.repository";
 
 export const jobKey = (id: string) => `jobs/${id}.json`;
@@ -32,10 +33,21 @@ async function processJob(job: Generation): Promise<void> {
     if (!version || !project) throw new Error("job references missing rows");
     const data: unknown = JSON.parse(await readFile(storage.getPath(jobKey(job.id)), "utf8"));
 
+    const schema = templateSchemaSchema.parse(version.schema);
+    const images = await uploadsService.resolveImages(job.projectId, schema, data);
+    if (!images.ok) {
+      await finishedWith({
+        status: "validation_error",
+        errorJson: { ok: false, kind: "validation", errors: images.errors },
+      });
+      return;
+    }
+
     const result = await renderToFile({
       source: version.source,
-      schema: templateSchemaSchema.parse(version.schema),
+      schema,
       data,
+      images: { files: images.files },
       timeoutSec: version.renderTimeoutSec,
       maxPayloadBytes: version.maxPayloadKb * 1024,
       assets: await assetsService.forRender(job.templateId),
