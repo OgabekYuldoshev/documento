@@ -9,7 +9,12 @@ const theme = EditorView.theme({
     borderRight: "1px solid var(--app-border)",
     color: "var(--mantine-color-dimmed)",
   },
-  ".cm-activeLine, .cm-activeLineGutter": { backgroundColor: "var(--app-subtle)" },
+  // Translucent: the selection layer sits under the line, an opaque fill would hide it.
+  ".cm-activeLine, .cm-activeLineGutter": {
+    backgroundColor: "color-mix(in srgb, currentColor 6%, transparent)",
+  },
+  ".cm-selectionBackground, &.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground, .cm-content ::selection":
+    { backgroundColor: "color-mix(in srgb, var(--mantine-color-brand-filled) 38%, transparent)" },
   ".cm-scroller": {
     overflow: "auto",
     fontFamily: "var(--mantine-font-family-monospace)",

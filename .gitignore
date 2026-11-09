@@ -42,3 +42,6 @@ yarn-error.log*
 *.db-shm
 *.db-wal
 apps/api/data/
+
+# local Typst fonts (Docker image bundles its own)
+apps/api/fonts/

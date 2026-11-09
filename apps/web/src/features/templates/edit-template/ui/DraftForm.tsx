@@ -134,7 +134,7 @@ export function DraftForm({
             </Tabs.Panel>
 
             <Tabs.Panel value="limits" style={{ flex: 1, minHeight: 0, overflow: "auto" }}>
-              <Stack maw={360}>
+              <Stack>
                 <NumberInput
                   label="Render vaqt limiti (soniya)"
                   placeholder="Masalan: 30"
