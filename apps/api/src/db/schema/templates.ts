@@ -113,7 +113,10 @@ export const generation = sqliteTable(
       .notNull()
       .references(() => templateVersion.id, { onDelete: "restrict" }),
     /** Set by the API-key module in M4. */
+    /** Keys are revoked, never deleted, so no FK (keeps the migration an additive ALTER). */
     apiKeyId: text("api_key_id"),
+    /** Client-supplied `Idempotency-Key` (API requests); unique per key. */
+    idempotencyKey: text("idempotency_key"),
     createdBy: text("created_by").references(() => user.id, { onDelete: "set null" }),
     source: text("source", { enum: ["ui", "api"] }).notNull(),
     status: text("status", { enum: GENERATION_STATUSES }).notNull(),
@@ -131,7 +134,38 @@ export const generation = sqliteTable(
   (t) => [
     index("generation_status_queued_idx").on(t.status, t.queuedAt),
     index("generation_project_idx").on(t.projectId, t.queuedAt),
+    uniqueIndex("generation_idempotency_uq")
+      .on(t.apiKeyId, t.idempotencyKey)
+      .where(sql`${t.idempotencyKey} is not null`),
   ],
 );
 
 export type Generation = typeof generation.$inferSelect;
+
+export const API_KEY_SCOPES = ["project", "templates"] as const;
+
+/** Integration keys. Only the SHA-256 hash is stored; the full key is shown once on creation. */
+export const apiKey = sqliteTable(
+  "api_key",
+  {
+    id: text("id").primaryKey(),
+    projectId: text("project_id")
+      .notNull()
+      .references(() => project.id, { onDelete: "restrict" }),
+    name: text("name").notNull(),
+    /** First 8 hex chars of the key body; used for lookup and shown in the UI. */
+    prefix: text("prefix").notNull().unique(),
+    hash: text("hash").notNull(),
+    scope: text("scope", { enum: API_KEY_SCOPES }).notNull(),
+    allowedTemplateIds: text("allowed_template_ids", { mode: "json" }).$type<string[] | null>(),
+    rateLimitPerMin: integer("rate_limit_per_min").notNull().default(60),
+    expiresAt: integer("expires_at", { mode: "timestamp_ms" }),
+    revokedAt: integer("revoked_at", { mode: "timestamp_ms" }),
+    lastUsedAt: integer("last_used_at", { mode: "timestamp_ms" }),
+    createdBy: text("created_by").references(() => user.id, { onDelete: "set null" }),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).default(now).notNull(),
+  },
+  (t) => [index("api_key_project_idx").on(t.projectId)],
+);
+
+export type ApiKey = typeof apiKey.$inferSelect;

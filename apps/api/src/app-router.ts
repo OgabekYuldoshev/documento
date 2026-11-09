@@ -1,3 +1,4 @@
+import { apiKeysRouter } from "./modules/api-keys/api-keys.router";
 import { templateAssetsRouter } from "./modules/assets/assets.router";
 import { authRouter } from "./modules/auth/auth.router";
 import { dashboardRouter } from "./modules/dashboard/dashboard.router";
@@ -15,6 +16,7 @@ export const appRouter = router({
   templates: templatesRouter,
   templateAssets: templateAssetsRouter,
   generations: generationsRouter,
+  apiKeys: apiKeysRouter,
 });
 
 /** Type-only contract consumed by the web app: `import type { AppRouter } from "@documento/api"`. */
