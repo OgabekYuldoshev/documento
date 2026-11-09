@@ -5,12 +5,19 @@ import { useDisclosure } from "@mantine/hooks";
 import { IconPlus } from "@tabler/icons-react";
 import { useMutation } from "@tanstack/react-query";
 import { zod4Resolver } from "mantine-form-zod-resolver";
+import type { ReactNode } from "react";
 import { useNavigate } from "react-router";
 import { getErrorMessage, queryClient, trpc } from "@/shared/api";
 import { ROUTES } from "@/shared/config";
 import { notify } from "@/shared/lib";
 
-export function CreateTemplateButton({ projectId }: { projectId: string }) {
+type CreateTemplateButtonProps = {
+  projectId: string;
+  /** Custom trigger (e.g. a gallery tile). Defaults to the primary button. */
+  renderTrigger?: (open: () => void) => ReactNode;
+};
+
+export function CreateTemplateButton({ projectId, renderTrigger }: CreateTemplateButtonProps) {
   const [opened, { open, close }] = useDisclosure(false);
   const navigate = useNavigate();
   const form = useForm({
@@ -32,9 +39,13 @@ export function CreateTemplateButton({ projectId }: { projectId: string }) {
 
   return (
     <>
-      <Button leftSection={<IconPlus size={18} />} onClick={open}>
-        Yangi shablon
-      </Button>
+      {renderTrigger ? (
+        renderTrigger(open)
+      ) : (
+        <Button leftSection={<IconPlus size={18} />} onClick={open}>
+          Yangi shablon
+        </Button>
+      )}
       <Modal opened={opened} onClose={close} title="Shablon yaratish" centered>
         <form
           onSubmit={form.onSubmit((v) =>

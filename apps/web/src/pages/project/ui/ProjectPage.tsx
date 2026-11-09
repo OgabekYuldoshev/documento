@@ -3,14 +3,13 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router";
 import { CreateApiKeyButton } from "@/features/api-keys/create-api-key";
 import { ProjectSettingsForm } from "@/features/projects/update-project";
-import { CreateTemplateButton } from "@/features/templates/create-template";
 import { trpc } from "@/shared/api";
 import { ROUTES } from "@/shared/config";
 import { formatDate } from "@/shared/lib";
 import { PageHeader } from "@/shared/ui";
 import { ApiKeysTable } from "@/widgets/api-keys-table";
 import { GenerationsTable } from "@/widgets/generations-table";
-import { TemplatesTable } from "@/widgets/templates-table";
+import { TemplatesGrid } from "@/widgets/templates-grid";
 
 const DEFAULT_RETENTION_DAYS_LABEL = "Standart";
 
@@ -68,10 +67,7 @@ export function ProjectPage() {
           <Tabs.Tab value="settings">Sozlamalar</Tabs.Tab>
         </Tabs.List>
         <Tabs.Panel value="templates">
-          <Group justify="flex-end" mb="md">
-            <CreateTemplateButton projectId={project.id} />
-          </Group>
-          <TemplatesTable projectId={project.id} />
+          <TemplatesGrid projectId={project.id} />
         </Tabs.Panel>
         <Tabs.Panel value="documents">
           <GenerationsTable projectId={project.id} />
