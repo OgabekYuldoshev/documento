@@ -1,3 +1,4 @@
+import { templateAssetsRouter } from "./modules/assets/assets.router";
 import { authRouter } from "./modules/auth/auth.router";
 import { dashboardRouter } from "./modules/dashboard/dashboard.router";
 import { projectsRouter } from "./modules/projects/projects.router";
@@ -11,6 +12,7 @@ export const appRouter = router({
   dashboard: dashboardRouter,
   projects: projectsRouter,
   templates: templatesRouter,
+  templateAssets: templateAssetsRouter,
 });
 
 /** Type-only contract consumed by the web app: `import type { AppRouter } from "@documento/api"`. */

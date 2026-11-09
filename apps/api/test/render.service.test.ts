@@ -1,8 +1,12 @@
 import { spawnSync } from "node:child_process";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import type { TemplateSchema } from "@documento/shared";
 import { describe, expect, it } from "vitest";
 import { env } from "../src/config/env";
 import { renderPreview, runPublishDryRun } from "../src/modules/render/render.service";
+import { solidPng } from "./png";
 
 const hasTypst = spawnSync(env.TYPST_BIN, ["--version"]).status === 0;
 
@@ -47,5 +51,27 @@ describe.skipIf(!hasTypst)("render service", () => {
       runPublishDryRun(version({ source: '#set text(font: "NoSuchFont")\nHi' })),
     ).rejects.toThrow(/font/i);
     await expect(runPublishDryRun(version({ sampleData: {} }))).rejects.toThrow(/\/name/);
+  });
+
+  it("exposes template images as assets/<name>", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "asset-test-"));
+    const path = join(dir, "logo.png");
+    writeFileSync(path, solidPng(30, 30));
+    const r = await renderPreview({
+      source: '#image("assets/logo.png", width: 20mm)',
+      schema,
+      data: { name: "x" },
+      timeoutSec: 20,
+      strictWarnings: true,
+      assets: [{ name: "logo.png", kind: "image", path }],
+    });
+    expect(r.ok).toBe(true);
+    const missing = await renderPreview({
+      source: '#image("assets/none.png")',
+      schema,
+      data: { name: "x" },
+      timeoutSec: 20,
+    });
+    expect(missing.ok).toBe(false);
   });
 });

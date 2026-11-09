@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { type TemplateSchema, templateSchemaSchema } from "@documento/shared";
 import { TRPCError } from "@trpc/server";
 import { env } from "../../config/env";
+import { assetsService } from "../assets/assets.service";
 import { type DataError, validateData } from "../templates/validate-data";
 import type { Diagnostic } from "./diagnostics";
 import { createScheduler } from "./scheduler";
@@ -20,6 +21,7 @@ export type RenderInput = {
   memoryMb?: number;
   strictWarnings?: boolean;
   maxPayloadBytes?: number;
+  assets?: Parameters<typeof runTypst>[0]["assets"];
 };
 
 export type RenderFailure =
@@ -57,6 +59,7 @@ export async function renderPreview(input: RenderInput): Promise<PreviewResult> 
         timeoutSec: input.timeoutSec,
         memoryMb,
         strictWarnings: input.strictWarnings,
+        assets: input.assets,
       }),
     );
   } catch (error) {
@@ -90,6 +93,7 @@ const formatDiagnostic = (d: Diagnostic) =>
 
 /** Publish gate: the sample data must render with no errors and no warnings. */
 export async function runPublishDryRun(version: {
+  templateId?: string;
   source: string;
   schema: unknown;
   sampleData: unknown;
@@ -103,6 +107,7 @@ export async function runPublishDryRun(version: {
     data: version.sampleData,
     timeoutSec: version.renderTimeoutSec,
     strictWarnings: true,
+    assets: version.templateId ? await assetsService.forRender(version.templateId) : undefined,
     maxPayloadBytes: version.maxPayloadKb * 1024,
   });
   if (result.ok) return;

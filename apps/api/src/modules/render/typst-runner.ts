@@ -1,6 +1,6 @@
 import { spawn, spawnSync } from "node:child_process";
 import { createReadStream, existsSync } from "node:fs";
-import { mkdir, mkdtemp, rm, stat, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, mkdtemp, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { env } from "../../config/env";
@@ -11,6 +11,8 @@ export type RenderJob = {
   data: unknown;
   timeoutSec: number;
   memoryMb: number;
+  /** Template files, exposed to Typst as `assets/<name>` (fonts are also added as font paths). */
+  assets?: { name: string; kind: "image" | "font"; path: string }[];
   /** Treat Typst warnings (e.g. unknown font) as failures. */
   strictWarnings?: boolean;
 };
@@ -90,12 +92,22 @@ export async function runTypst(job: RenderJob): Promise<RenderResult> {
   await writeFile(join(dir, "main.typ"), job.source);
   await writeFile(join(dir, "data.json"), JSON.stringify(job.data ?? {}));
 
+  const fontsDir = join(dir, "fonts");
+  const assets = job.assets ?? [];
+  if (assets.length > 0) await mkdir(join(dir, "assets"));
+  if (assets.some((a) => a.kind === "font")) await mkdir(fontsDir);
+  for (const asset of assets) {
+    await copyFile(asset.path, join(dir, asset.kind === "font" ? "fonts" : "assets", asset.name));
+    if (asset.kind === "font") await copyFile(asset.path, join(dir, "assets", asset.name));
+  }
+
   const typstArgs = [
     "compile",
     "--root",
     dir,
     "--ignore-system-fonts",
     ...(existsSync(env.FONTS_DIR) ? ["--font-path", env.FONTS_DIR] : []),
+    ...(assets.some((a) => a.kind === "font") ? ["--font-path", fontsDir] : []),
     "--package-path",
     empty,
     "--package-cache-path",

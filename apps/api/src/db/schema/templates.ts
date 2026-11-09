@@ -63,3 +63,26 @@ export const templateVersion = sqliteTable(
 
 export type Template = typeof template.$inferSelect;
 export type TemplateVersion = typeof templateVersion.$inferSelect;
+
+export const templateAsset = sqliteTable(
+  "template_asset",
+  {
+    id: text("id").primaryKey(),
+    templateId: text("template_id")
+      .notNull()
+      .references(() => template.id, { onDelete: "restrict" }),
+    /** File name as referenced from Typst: `assets/<name>`. */
+    name: text("name").notNull(),
+    kind: text("kind", { enum: ["image", "font"] }).notNull(),
+    mime: text("mime").notNull(),
+    size: integer("size").notNull(),
+    sha256: text("sha256").notNull(),
+    width: integer("width"),
+    height: integer("height"),
+    storageKey: text("storage_key").notNull(),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).default(now).notNull(),
+  },
+  (t) => [uniqueIndex("template_asset_name_uq").on(t.templateId, t.name)],
+);
+
+export type TemplateAsset = typeof templateAsset.$inferSelect;

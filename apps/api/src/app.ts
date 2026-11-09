@@ -6,6 +6,7 @@ import { secureHeaders } from "hono/secure-headers";
 import { appRouter } from "./app-router";
 import { env } from "./config/env";
 import { auth } from "./lib/auth";
+import { assetsRoute } from "./modules/assets/assets.route";
 import { createContext } from "./trpc/init";
 
 export const app = new Hono();
@@ -28,6 +29,8 @@ app.all("/api/auth/admin/*", (c) => c.json({ message: "Not found" }, 404));
 app.all("/api/auth/sign-up/*", (c) => c.json({ message: "Not found" }, 404));
 
 app.on(["GET", "POST"], "/api/auth/*", (c) => auth.handler(c.req.raw));
+
+app.route("/", assetsRoute);
 
 app.use(
   "/api/trpc/*",
