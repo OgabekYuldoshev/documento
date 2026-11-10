@@ -10,6 +10,7 @@ import { templatesRepository } from "../templates/templates.repository";
 import { uploadsService } from "../uploads/uploads.service";
 import { webhooksService } from "../webhooks/webhooks.service";
 import { generationsRepository as repo } from "./generations.repository";
+import { notifyJobFinished } from "./job-events";
 
 export const jobKey = (id: string) => `jobs/${id}.json`;
 export const pdfKey = (id: string) => `pdf/${id}.pdf`;
@@ -101,6 +102,8 @@ async function processJob(job: Generation): Promise<void> {
     }).catch((e) => console.error("[queue] could not record failure", job.id, e));
   } finally {
     await removeJobFile(job.id);
+    // Last step: waiters wake up only once the row is final and the input file is gone.
+    notifyJobFinished(job.id);
   }
 }
 

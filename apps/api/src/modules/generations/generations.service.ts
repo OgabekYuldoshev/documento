@@ -10,7 +10,11 @@ import { templatesRepository } from "../templates/templates.repository";
 import { validateData } from "../templates/validate-data";
 import { uploadsService } from "../uploads/uploads.service";
 import { generationsRepository as repo } from "./generations.repository";
+import { waitForJobSignal } from "./job-events";
 import { jobKey, kick } from "./queue";
+
+/** Safety-net re-check interval for sync waiters; the queue normally wakes them at once. */
+const RECHECK_MS = 1000;
 
 type Actor = { id: string; role: Parameters<typeof projectsService.get>[0]["role"] };
 
@@ -170,15 +174,25 @@ export const generationsService = {
     return (await repo.list({ projectId: project.id, ...filter })).map(toPublicGeneration);
   },
 
-  /** Polls until the job leaves queued/processing or `ms` passes (sync-wait for the API). */
+  /**
+   * Waits until the job leaves queued/processing or `ms` passes (sync-wait for the API). The
+   * queue signals completion; a slow re-check covers jobs finished without a signal (watchdog).
+   */
   async waitFor(id: string, ms: number): Promise<Generation | null> {
     const deadline = Date.now() + ms;
     for (;;) {
+      // Subscribe before reading so a job finishing in between is not missed.
+      const signal = waitForJobSignal(id, Math.min(RECHECK_MS, Math.max(0, deadline - Date.now())));
       const row = await repo.find(id);
-      if (!row) return null;
-      if (row.status !== "queued" && row.status !== "processing") return row;
-      if (Date.now() >= deadline) return row;
-      await new Promise((r) => setTimeout(r, 100));
+      if (
+        !row ||
+        (row.status !== "queued" && row.status !== "processing") ||
+        Date.now() >= deadline
+      ) {
+        signal.cancel();
+        return row ?? null;
+      }
+      await signal.promise;
     }
   },
 

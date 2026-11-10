@@ -136,6 +136,10 @@ export const generation = sqliteTable(
   (t) => [
     index("generation_status_queued_idx").on(t.status, t.queuedAt),
     index("generation_project_idx").on(t.projectId, t.queuedAt),
+    // Oldest waiting job of one project (queue fairness); stays tiny however long history grows.
+    index("generation_queued_project_idx")
+      .on(t.projectId, t.queuedAt)
+      .where(sql`${t.status} = 'queued'`),
     uniqueIndex("generation_idempotency_uq")
       .on(t.apiKeyId, t.idempotencyKey)
       .where(sql`${t.idempotencyKey} is not null`),

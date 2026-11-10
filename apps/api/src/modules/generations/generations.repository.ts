@@ -113,23 +113,57 @@ export const generationsRepository = {
   },
 
   /**
+   * Fairness pick without scanning the whole queue: only a handful of projects can be running
+   * at once, so (1) the oldest job of any project with nothing running wins, and (2) when every
+   * waiting project is busy, compare just those projects' oldest jobs.
+   */
+  async pickNext(): Promise<string | null> {
+    const running = await db
+      .select({ projectId: generation.projectId, n: sql<number>`count(*)` })
+      .from(generation)
+      .where(eq(generation.status, "processing"))
+      .groupBy(generation.projectId);
+    const busy = running.map((r) => r.projectId);
+
+    const [idle] = await db
+      .select({ id: generation.id })
+      .from(generation)
+      .where(
+        and(
+          eq(generation.status, "queued"),
+          busy.length > 0 ? notInArray(generation.projectId, busy) : undefined,
+        ),
+      )
+      .orderBy(generation.queuedAt)
+      .limit(1);
+    if (idle) return idle.id;
+
+    let best: { id: string; n: number; queuedAt: Date } | null = null;
+    for (const r of running) {
+      const [head] = await db
+        .select({ id: generation.id, queuedAt: generation.queuedAt })
+        .from(generation)
+        .where(and(eq(generation.status, "queued"), eq(generation.projectId, r.projectId)))
+        .orderBy(generation.queuedAt)
+        .limit(1);
+      if (!head) continue;
+      const n = Number(r.n);
+      if (!best || n < best.n || (n === best.n && head.queuedAt < best.queuedAt)) {
+        best = { id: head.id, n, queuedAt: head.queuedAt };
+      }
+    }
+    return best?.id ?? null;
+  },
+
+  /**
    * Next job, atomically flipped to `processing`; null when the queue is empty. Projects with
    * fewer jobs running right now go first (so one project's backlog cannot starve the others);
    * inside a project the oldest job goes first.
    */
   async claimNext() {
     for (let attempt = 0; attempt < 5; attempt++) {
-      const [next] = await db
-        .select({ id: generation.id })
-        .from(generation)
-        .where(eq(generation.status, "queued"))
-        .orderBy(
-          sql`(select count(*) from ${generation} as running
-               where running.project_id = ${generation.projectId} and running.status = 'processing')`,
-          generation.queuedAt,
-        )
-        .limit(1);
-      if (!next) return null;
+      const nextId = await this.pickNext();
+      if (!nextId) return null;
       const [claimed] = await db
         .update(generation)
         .set({
@@ -137,7 +171,7 @@ export const generationsRepository = {
           startedAt: new Date(),
           attempts: sql`${generation.attempts} + 1`,
         })
-        .where(and(eq(generation.id, next.id), eq(generation.status, "queued")))
+        .where(and(eq(generation.id, nextId), eq(generation.status, "queued")))
         .returning();
       if (claimed) return claimed; // lost the race: try the next row
     }

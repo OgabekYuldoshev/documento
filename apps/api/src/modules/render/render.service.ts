@@ -13,6 +13,25 @@ import { runTypst } from "./typst-runner";
 export const DEFAULT_RENDER_MEMORY_MB = 1024;
 export const PREVIEW_MAX_BYTES = 20 * 1024 * 1024;
 
+// Measured (Typst, table-heavy documents): ~800 MB of RSS per MB of JSON payload plus a base.
+const RESERVE_BASE_MB = 64;
+const RESERVE_MB_PER_PAYLOAD_MB = 800;
+// A decoded raster can take far more than its file size (up to 40 MP of RGBA).
+const RESERVE_MB_PER_IMAGE = 128;
+
+/**
+ * Memory a render reserves from the scheduler budget. Tiny documents reserve little (many run in
+ * parallel); huge payloads reserve a lot, so they queue instead of exhausting RAM. This works on
+ * every OS, unlike the `prlimit` cap that only exists on Linux.
+ */
+export function estimateRenderMb(payloadBytes: number, imageCount: number): number {
+  return Math.ceil(
+    RESERVE_BASE_MB +
+      (payloadBytes / (1024 * 1024)) * RESERVE_MB_PER_PAYLOAD_MB +
+      imageCount * RESERVE_MB_PER_IMAGE,
+  );
+}
+
 const scheduler = createScheduler(env.RENDER_MEMORY_BUDGET_MB);
 
 export type RenderInput = {
@@ -95,11 +114,21 @@ export async function renderToFile(input: RenderInput): Promise<FileResult> {
       extraFiles.push({ name: PLACEHOLDER_NAME, bytes: PLACEHOLDER_PNG });
   }
 
-  const memoryMb = input.memoryMb ?? DEFAULT_RENDER_MEMORY_MB;
+  const estimateMb = estimateRenderMb(
+    Buffer.byteLength(JSON.stringify(data)),
+    extraFiles.filter((f) => f.name.startsWith("uploads/")).length,
+  );
+  // A job bigger than the whole budget runs alone (reserves everything) instead of failing.
+  const reserveMb = Math.min(estimateMb, env.RENDER_MEMORY_BUDGET_MB);
+  // The hard cap (prlimit address space, Linux) must stay well above legitimate use.
+  const memoryMb = Math.max(
+    input.memoryMb ?? DEFAULT_RENDER_MEMORY_MB,
+    Math.ceil(estimateMb * 1.25) + 1024,
+  );
   let result: Awaited<ReturnType<typeof runTypst>>;
   try {
     result = await scheduler.run(
-      memoryMb,
+      reserveMb,
       () =>
         runTypst({
           source: input.source,
