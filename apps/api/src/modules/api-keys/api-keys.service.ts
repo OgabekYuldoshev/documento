@@ -2,6 +2,7 @@ import type { CreateApiKeyInput } from "@documento/shared";
 import { createApiKeySchema } from "@documento/shared";
 import { TRPCError } from "@trpc/server";
 import type { ApiKey, Project } from "../../db/schema";
+import { auditService } from "../audit/audit.service";
 import { projectsRepository } from "../projects/projects.repository";
 import { templatesRepository } from "../templates/templates.repository";
 import { apiKeysRepository as repo } from "./api-keys.repository";
@@ -45,14 +46,30 @@ export const apiKeysService = {
       expiresAt: input.expiresInDays ? new Date(Date.now() + input.expiresInDays * DAY_MS) : null,
       createdBy: actorId,
     });
+    await auditService.record({
+      action: "api_key.created",
+      actorId,
+      targetType: "api_key",
+      targetId: row.id,
+      targetLabel: `${row.name} (${project.name})`,
+    });
     // The only time the full key is ever returned.
     return { key: toPublicKey(row), secret: raw };
   },
 
-  async revoke(project: Project, apiKeyId: string) {
+  async revoke(actorId: string, project: Project, apiKeyId: string) {
     const row = await repo.find(project.id, apiKeyId);
     if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "Key topilmadi" });
-    if (!row.revokedAt) await repo.revoke(row.id, new Date());
+    if (!row.revokedAt) {
+      await repo.revoke(row.id, new Date());
+      await auditService.record({
+        action: "api_key.revoked",
+        actorId,
+        targetType: "api_key",
+        targetId: row.id,
+        targetLabel: `${row.name} (${project.name})`,
+      });
+    }
   },
 
   /** Verifies a raw key. Unknown/malformed/wrong-secret all return the same `invalid`. */

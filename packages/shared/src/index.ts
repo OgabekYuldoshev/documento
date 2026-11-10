@@ -1,4 +1,5 @@
 export * from "./apikeys.schemas";
+export * from "./audit";
 export * from "./auth.schemas";
 export * from "./projects.schemas";
 export * from "./roles";

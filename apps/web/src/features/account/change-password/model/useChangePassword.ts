@@ -4,6 +4,7 @@ import { authClient } from "@/shared/api";
 import { notify } from "@/shared/lib";
 
 const ERRORS: Record<string, string> = {
+  TOO_MANY_ATTEMPTS: "Juda ko'p urinish. Birozdan keyin qayta urinib ko'ring",
   INVALID_PASSWORD: "Joriy parol noto'g'ri",
   PASSWORD_TOO_SHORT: "Yangi parol juda qisqa (kamida 8 ta belgi)",
   PASSWORD_TOO_LONG: "Yangi parol juda uzun",

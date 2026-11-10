@@ -1,4 +1,5 @@
 import { createBrowserRouter, RouterProvider } from "react-router";
+import { AuditPage } from "@/pages/audit";
 import { DashboardPage } from "@/pages/dashboard";
 import { LoginPage } from "@/pages/login";
 import { NotFoundPage } from "@/pages/not-found";
@@ -19,6 +20,7 @@ const router = createBrowserRouter([
     children: [
       { path: ROUTES.dashboard, element: <DashboardPage /> },
       { path: ROUTES.users, loader: requireAdmin, element: <UsersPage /> },
+      { path: ROUTES.audit, loader: requireAdmin, element: <AuditPage /> },
       { path: ROUTES.profile, element: <ProfilePage /> },
       { path: ROUTES.projects, element: <ProjectsPage /> },
       { path: ROUTES.project(":projectId"), element: <ProjectPage /> },

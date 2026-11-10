@@ -7,6 +7,7 @@ import {
 import { TRPCError } from "@trpc/server";
 import { env } from "../../config/env";
 import type { Project } from "../../db/schema";
+import { auditService } from "../audit/audit.service";
 import { storage } from "../storage/storage";
 import { projectsRepository } from "./projects.repository";
 import { slugify } from "./slug";
@@ -49,13 +50,21 @@ export const projectsService = {
     // Retry on a unique-slug race between the check and the insert.
     for (let attempt = 0; ; attempt++) {
       try {
-        return await projectsRepository.insert({
+        const created = await projectsRepository.insert({
           id: crypto.randomUUID(),
           name: input.name,
           description: input.description || null,
           slug: await uniqueSlug(input.name),
           ownerId: actor.id,
         });
+        await auditService.record({
+          action: "project.created",
+          actorId: actor.id,
+          targetType: "project",
+          targetId: created.id,
+          targetLabel: created.name,
+        });
+        return created;
       } catch (error) {
         const unique = String((error as Error).cause ?? error).includes("UNIQUE");
         if (!unique || attempt >= 3) throw error;
@@ -83,6 +92,13 @@ export const projectsService = {
       retentionDays: input.retentionDays,
     });
     if (!updated) throw notFound();
+    await auditService.record({
+      action: "project.updated",
+      actorId: actor.id,
+      targetType: "project",
+      targetId: updated.id,
+      targetLabel: updated.name,
+    });
     return updated;
   },
 
@@ -101,10 +117,24 @@ export const projectsService = {
     const keys = await projectsRepository.deleteCascade(id);
     // Files go after the DB commit: a failed removal leaves an orphan file, never a broken row.
     await Promise.all(keys.map((key) => storage.remove(key).catch(() => undefined)));
+    await auditService.record({
+      action: "project.deleted",
+      actorId: actor.id,
+      targetType: "project",
+      targetId: id,
+      targetLabel: project.name,
+    });
   },
 
   async archive(actor: Actor, id: string): Promise<void> {
-    await projectsService.get(actor, id);
+    const project = await projectsService.get(actor, id);
     await projectsRepository.archive(id, new Date());
+    await auditService.record({
+      action: "project.archived",
+      actorId: actor.id,
+      targetType: "project",
+      targetId: id,
+      targetLabel: project.name,
+    });
   },
 };

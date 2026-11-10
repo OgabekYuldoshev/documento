@@ -2,6 +2,7 @@ import { ASSIGNABLE_ROLES, type CreateUserInput, getRoleLabel, type Role } from 
 import { TRPCError } from "@trpc/server";
 import { APIError } from "better-auth/api";
 import { auth } from "../../lib/auth";
+import { auditService } from "../audit/audit.service";
 import { usersRepository } from "./users.repository";
 
 export type Actor = { id: string; role: Role };
@@ -44,7 +45,10 @@ async function assertCanManage(actor: Actor, targetId: string) {
       message: "Bu foydalanuvchi ustida amal bajarishga huquqingiz yetmaydi",
     });
   }
+  return target;
 }
+
+const label = (u: { name: string; email: string }) => `${u.name} <${u.email}>`;
 
 export const usersService = {
   list: () => usersRepository.list(),
@@ -79,6 +83,14 @@ export const usersService = {
         headers,
         body: { ...input, email: input.email },
       });
+      await auditService.record({
+        action: "user.created",
+        actorId: actor.id,
+        targetType: "user",
+        targetId: user.id,
+        targetLabel: label(input),
+        detail: `Rol: ${input.role}`,
+      });
       return { id: user.id };
     } catch (error) {
       rethrow(error);
@@ -86,17 +98,42 @@ export const usersService = {
   },
 
   async setBanned(actor: Actor, headers: Headers, id: string, banned: boolean) {
-    await assertCanManage(actor, id);
+    const target = await assertCanManage(actor, id);
     try {
       if (banned) await auth.api.banUser({ headers, body: { userId: id } });
       else await auth.api.unbanUser({ headers, body: { userId: id } });
     } catch (error) {
       rethrow(error);
     }
+    await auditService.record({
+      action: banned ? "user.banned" : "user.unbanned",
+      actorId: actor.id,
+      targetType: "user",
+      targetId: id,
+      targetLabel: label(target),
+    });
+  },
+
+  /** Admin sets a new password for a user below them and signs that user out everywhere. */
+  async resetPassword(actor: Actor, headers: Headers, id: string, newPassword: string) {
+    const target = await assertCanManage(actor, id);
+    try {
+      await auth.api.setUserPassword({ headers, body: { userId: id, newPassword } });
+      await auth.api.revokeUserSessions({ headers, body: { userId: id } });
+    } catch (error) {
+      rethrow(error);
+    }
+    await auditService.record({
+      action: "user.password_reset",
+      actorId: actor.id,
+      targetType: "user",
+      targetId: id,
+      targetLabel: label(target),
+    });
   },
 
   async remove(actor: Actor, headers: Headers, id: string) {
-    await assertCanManage(actor, id);
+    const target = await assertCanManage(actor, id);
     if ((await usersRepository.countOwnedProjects(id)) > 0) {
       throw new TRPCError({
         code: "CONFLICT",
@@ -109,5 +146,12 @@ export const usersService = {
     } catch (error) {
       rethrow(error);
     }
+    await auditService.record({
+      action: "user.removed",
+      actorId: actor.id,
+      targetType: "user",
+      targetId: id,
+      targetLabel: label(target),
+    });
   },
 };

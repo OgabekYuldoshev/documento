@@ -20,6 +20,9 @@ const envSchema = z.object({
   TYPST_BIN: z.string().default("typst"),
   FONTS_DIR: z.string().default("./fonts"),
   RENDER_MEMORY_BUDGET_MB: z.coerce.number().int().min(256).default(2560),
+  // Sign-in throttle: failures per email (and per IP, x4) inside the window lock further attempts.
+  LOGIN_MAX_FAILURES: z.coerce.number().int().min(1).default(5),
+  LOGIN_LOCKOUT_MINUTES: z.coerce.number().int().min(1).default(15),
   SEED_SUPERADMIN_NAME: z.string().default("Super Admin"),
   SEED_SUPERADMIN_EMAIL: z.email().default("superadmin@example.com"),
   SEED_SUPERADMIN_PASSWORD: z.string().min(8).default("ChangeMe123!"),

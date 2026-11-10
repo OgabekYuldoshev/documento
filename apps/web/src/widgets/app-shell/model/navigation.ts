@@ -1,4 +1,4 @@
-import { IconFolders, IconLayoutDashboard, IconUsers } from "@tabler/icons-react";
+import { IconFolders, IconHistory, IconLayoutDashboard, IconUsers } from "@tabler/icons-react";
 import type { ComponentType } from "react";
 import { ROUTES } from "@/shared/config";
 
@@ -25,7 +25,10 @@ export const NAVIGATION: NavGroup[] = [
   },
   {
     title: "Boshqaruv",
-    items: [{ to: ROUTES.users, label: "Foydalanuvchilar", icon: IconUsers, adminOnly: true }],
+    items: [
+      { to: ROUTES.users, label: "Foydalanuvchilar", icon: IconUsers, adminOnly: true },
+      { to: ROUTES.audit, label: "Audit log", icon: IconHistory, adminOnly: true },
+    ],
   },
 ];
 

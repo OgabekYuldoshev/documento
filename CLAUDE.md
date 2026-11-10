@@ -113,6 +113,13 @@ pnpm 11 blocks dependency build scripts: allowed ones are listed under `allowBui
 - Web: project tab "Hujjatlar" (`entities/generation`, `widgets/generations-table`): DataTable with time, template, source (UI/API), status badge (tooltip shows the first validation error / Typst diagnostic), pages, size, duration, PDF download (`/api/generations/:id/file`); polls every 3 s while jobs are queued/processing.
 - Template page section "API orqali ishlatish" (`features/templates/edit-template/ui/ApiSnippets.tsx`, `model/snippets.ts`): cURL / Node.js / Python for `POST /v1/templates/:slug/generate`, body from `templates.apiExample` (sample generated from the published schema).
 
+## Account, audit, sign-in throttle (phase 3 done)
+
+- Account: `/profile` (tabs Profil/Parol). Name editable via `authClient.updateUser`; **email is read-only** (admins provision accounts). Password via `authClient.changePassword` (+ optional revoke of other sessions). Project delete: `projects.delete` (type the exact name, cascades rows + files, refused while jobs run).
+- Admin password reset: `users.resetPassword` (`adminProcedure`, same `assertCanManage` rank rules, calls `auth.api.setUserPassword` + `revokeUserSessions`). Web: `features/users/reset-password` (generate/copy password).
+- Audit: table `audit_log` (no FKs, name snapshots, append-only), `modules/audit/` (`auditService.record()` is best-effort and never throws; `audit.list` admin-only, filter by action, last 500). Action keys + Uzbek labels in `packages/shared/src/audit.ts` (`AUDIT_ACTIONS`): add a key there when auditing a new action. Recorded in services (users, projects, api-keys) and in the Hono auth guards (sign-in ok/failed/blocked with IP, password change). Web: `pages/audit` + `widgets/audit-table`, nav item "Audit log" (admin only).
+- Sign-in throttle: `modules/auth/login-guard.ts` (in-memory, single instance): `LOGIN_MAX_FAILURES` failures per email (x4 per IP) inside `LOGIN_LOCKOUT_MINUTES` -> 429 `TOO_MANY_ATTEMPTS` + `Retry-After`. Wired in `auth.guard.ts` (`signInGuard`, `changePasswordGuard`) in front of Better Auth in `app.ts`. IP = first `X-Forwarded-For` hop: the reverse proxy must set it.
+
 ## API architecture (`apps/api/src`) - feature-based, layered
 
 ```
@@ -177,4 +184,4 @@ Conventions:
 ## Roadmap / not built yet
 
 Phase 1 (done): auth flow (login/logout, session, guards), seeded superadmin, admin-only user management, dashboard with stats, light/dark theme.
-Next candidates: password change / admin password reset, profile page, audit log, rate limiting on sign-in, tests (Vitest), production deploy (single origin reverse proxy, secure cookies via `NODE_ENV=production`).
+Next candidates: webhook (M6), production deploy (single origin reverse proxy, secure cookies via `NODE_ENV=production`).

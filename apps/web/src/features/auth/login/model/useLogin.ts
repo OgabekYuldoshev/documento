@@ -7,6 +7,7 @@ import { ROUTES } from "@/shared/config";
 
 const LOGIN_ERRORS: Record<string, string> = {
   INVALID_EMAIL_OR_PASSWORD: "Email yoki parol noto'g'ri",
+  TOO_MANY_ATTEMPTS: "Juda ko'p urinish. Birozdan keyin qayta urinib ko'ring",
   BANNED_USER: "Hisobingiz bloklangan. Administratorga murojaat qiling",
 };
 

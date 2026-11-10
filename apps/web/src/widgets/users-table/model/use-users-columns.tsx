@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import { useSession } from "@/entities/session";
 import { type User, UserCell, UserRoleBadge } from "@/entities/user";
 import { DeleteUserButton } from "@/features/users/delete-user";
+import { ResetPasswordButton } from "@/features/users/reset-password";
 import { ToggleBanButton } from "@/features/users/toggle-ban";
 import { formatDate } from "@/shared/lib";
 import { createDataTableColumns } from "@/shared/ui";
@@ -55,10 +56,11 @@ export function useUsersColumns() {
         id: "actions",
         header: "",
         enableSorting: false,
-        meta: { align: "right", width: 100 },
+        meta: { align: "right", width: 140 },
         cell: ({ row }) =>
           canManage(meId, meRole, row.original) && (
             <Group gap={4} justify="flex-end" wrap="nowrap">
+              <ResetPasswordButton id={row.original.id} name={row.original.name} />
               <ToggleBanButton
                 id={row.original.id}
                 name={row.original.name}

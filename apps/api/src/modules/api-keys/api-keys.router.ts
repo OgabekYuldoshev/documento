@@ -12,5 +12,5 @@ export const apiKeysRouter = router({
 
   revoke: projectProcedure
     .input(revokeApiKeySchema)
-    .mutation(({ ctx, input }) => apiKeysService.revoke(ctx.project, input.apiKeyId)),
+    .mutation(({ ctx, input }) => apiKeysService.revoke(ctx.actor.id, ctx.project, input.apiKeyId)),
 });

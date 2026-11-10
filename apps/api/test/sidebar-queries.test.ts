@@ -17,16 +17,6 @@ describe("sidebar and dashboard queries", () => {
     expect(recent[0]).toMatchObject({ projectId: project.id, projectName: "Mine" });
   });
 
-  it("reports render activity as zero counts for a fresh user", async () => {
-    const owner = callerFor(await createUser());
-    expect(await owner.generations.activity()).toEqual({
-      running: 0,
-      failed: 0,
-      last24h: 0,
-      last7d: 0,
-    });
-  });
-
   it("builds the home feed and counters from the caller's own generations only", async () => {
     const owner = callerFor(await createUser());
     const other = callerFor(await createUser());

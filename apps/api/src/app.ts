@@ -7,6 +7,7 @@ import { appRouter } from "./app-router";
 import { env } from "./config/env";
 import { auth } from "./lib/auth";
 import { assetsRoute } from "./modules/assets/assets.route";
+import { changePasswordGuard, signInGuard } from "./modules/auth/auth.guard";
 import { generationsRoute } from "./modules/generations/generations.route";
 import { previewsRoute } from "./modules/previews/previews.route";
 import { uploadsRoute } from "./modules/uploads/uploads.route";
@@ -32,6 +33,8 @@ app.get("/health", (c) => c.json({ ok: true }));
 app.all("/api/auth/admin/*", (c) => c.json({ message: "Not found" }, 404));
 app.all("/api/auth/sign-up/*", (c) => c.json({ message: "Not found" }, 404));
 
+app.use("/api/auth/sign-in/email", signInGuard);
+app.use("/api/auth/change-password", changePasswordGuard);
 app.on(["GET", "POST"], "/api/auth/*", (c) => auth.handler(c.req.raw));
 
 app.route("/", assetsRoute);

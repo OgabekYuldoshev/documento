@@ -9,6 +9,12 @@ export const createUserSchema = z.object({
 });
 export type CreateUserInput = z.infer<typeof createUserSchema>;
 
+export const resetPasswordSchema = z.object({
+  id: z.string().min(1),
+  newPassword: passwordSchema,
+});
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
+
 export const userIdSchema = z.object({ id: z.string().min(1) });
 
 export const setBannedSchema = z.object({
