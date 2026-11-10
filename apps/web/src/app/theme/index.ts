@@ -4,7 +4,6 @@ import {
   type MantineThemeOverride,
   rem,
 } from "@mantine/core";
-import classes from "./nav-link.module.scss";
 import { brand, dark, gray } from "./palette";
 
 const FONT =
@@ -89,7 +88,6 @@ export const theme: MantineThemeOverride = createTheme({
     },
     NavLink: {
       defaultProps: { variant: "light" },
-      classNames: { root: classes.root },
       styles: {
         root: {
           fontWeight: 500,

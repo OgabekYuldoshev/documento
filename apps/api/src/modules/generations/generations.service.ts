@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { type TemplateSchema, templateSchemaSchema } from "@documento/shared";
+import { isAdminRole, type TemplateSchema, templateSchemaSchema } from "@documento/shared";
 import { TRPCError } from "@trpc/server";
 import type { Generation, Project } from "../../db/schema";
 import { projectsService } from "../projects/projects.service";
@@ -51,7 +51,16 @@ async function insertOrReplay(base: Base, rest: Rest): Promise<Generation> {
   }
 }
 
+const DAY_MS = 24 * 60 * 60_000;
+
 export const generationsService = {
+  /** Jobs in flight and failures in the last 24 h across the actor's projects. */
+  activity: (actor: Actor) =>
+    repo.activity(
+      isAdminRole(actor.role) ? {} : { ownerId: actor.id },
+      new Date(Date.now() - DAY_MS),
+    ),
+
   async create(
     origin: Origin,
     project: Project,

@@ -1,14 +1,16 @@
-import { NavLink, Skeleton, Stack } from "@mantine/core";
-import { IconFolder, IconFolderOpen } from "@tabler/icons-react";
+import { Skeleton, Stack } from "@mantine/core";
+import { IconDots, IconFolder, IconFolderOpen, IconPlus } from "@tabler/icons-react";
 import { useMemo } from "react";
-import { NavLink as RouterLink, useMatch, useSearchParams } from "react-router";
+import { useMatch, useSearchParams } from "react-router";
 import {
   PROJECT_SECTIONS,
   parseSection,
   projectSectionPath,
   useProjects,
 } from "@/entities/project";
+import { CreateProjectButton } from "@/features/projects/create-project";
 import { ROUTES } from "@/shared/config";
+import { SidebarAction, SidebarLink } from "./sidebar-link";
 import classes from "./sidebar-projects.module.scss";
 
 const VISIBLE_COUNT = 4;
@@ -30,7 +32,7 @@ export function SidebarProjects({ onNavigate }: { onNavigate: () => void }) {
 
   if (isPending) {
     return (
-      <Stack gap={6} pl="md" py={4}>
+      <Stack gap={6} pl={22} py={4}>
         <Skeleton h={22} />
         <Skeleton h={22} />
       </Stack>
@@ -40,67 +42,70 @@ export function SidebarProjects({ onNavigate }: { onNavigate: () => void }) {
   const total = data?.length ?? 0;
 
   return (
-    <Stack gap={1} pl="md">
+    <div className={classes.tree}>
       {visible.map((project) => {
         const open = project.id === activeId;
         const base = ROUTES.project(project.id);
         return (
           <div key={project.id}>
-            <NavLink
-              component={RouterLink}
+            <SidebarLink
+              size="sm"
               to={base}
               end
               // The open project's active section carries the highlight, not the folder row.
-              fw={open ? 650 : undefined}
+              active={false}
               label={project.name}
-              leftSection={
+              icon={
                 open ? (
-                  <IconFolderOpen size={16} stroke={1.6} />
+                  <IconFolderOpen size={15} stroke={1.7} />
                 ) : (
-                  <IconFolder size={16} stroke={1.6} />
+                  <IconFolder size={15} stroke={1.7} />
                 )
               }
-              onClick={onNavigate}
-              classNames={{ label: classes.label }}
-              styles={{ root: { padding: "7px 12px" } }}
+              onNavigate={onNavigate}
             />
             {open && (
-              <Stack gap={1} className={classes.sections}>
+              <div className={classes.sections}>
                 {PROJECT_SECTIONS.map((item) => (
-                  <NavLink
+                  <SidebarLink
                     key={item.value}
-                    component={RouterLink}
+                    size="sm"
                     to={projectSectionPath(base, item.value)}
                     // The query string is not part of route matching: decide "active" by hand.
                     active={section === item.value}
                     label={item.label}
-                    leftSection={<item.icon size={15} stroke={1.6} />}
-                    onClick={onNavigate}
-                    styles={{
-                      root: {
-                        padding: "5px 10px",
-                        fontSize: "var(--mantine-font-size-sm)",
-                        fontWeight: 450,
-                      },
-                    }}
+                    icon={<item.icon size={15} stroke={1.7} />}
+                    onNavigate={onNavigate}
                   />
                 ))}
-              </Stack>
+              </div>
             )}
           </div>
         );
       })}
       {total > VISIBLE_COUNT && (
-        <NavLink
-          component={RouterLink}
+        <SidebarLink
+          size="sm"
           to={ROUTES.projects}
           end
+          active={false}
           label={`Hammasi (${total})`}
-          c="dimmed"
-          fz="xs"
-          onClick={onNavigate}
+          icon={<IconDots size={15} stroke={1.7} />}
+          onNavigate={onNavigate}
         />
       )}
-    </Stack>
+      <CreateProjectButton
+        renderTrigger={(open) => (
+          <SidebarAction
+            label="Yangi project"
+            icon={<IconPlus size={15} stroke={1.7} />}
+            onClick={() => {
+              onNavigate();
+              open();
+            }}
+          />
+        )}
+      />
+    </div>
   );
 }

@@ -1,0 +1,84 @@
+.icon {
+  display: flex;
+  flex-shrink: 0;
+  color: light-dark(var(--mantine-color-gray-6), var(--mantine-color-dark-2));
+}
+
+// One row style for the whole sidebar: compact (32 px), quiet, one accent for "active".
+a.link,
+button.link {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 32px;
+  padding: 0 10px;
+  font-size: var(--mantine-font-size-sm);
+  font-weight: 500;
+  color: light-dark(var(--mantine-color-gray-7), var(--mantine-color-dark-1));
+  text-decoration: none;
+  border-radius: var(--mantine-radius-default);
+  outline: none;
+  cursor: pointer;
+  transition:
+    background-color 100ms ease,
+    color 100ms ease;
+
+  &[data-size="sm"] {
+    height: 28px;
+    padding: 0 8px;
+    font-weight: 450;
+  }
+
+  &.active {
+    color: light-dark(var(--mantine-color-dark-9), var(--mantine-color-white));
+    background: light-dark(var(--mantine-color-gray-1), var(--mantine-color-dark-5));
+
+    .icon {
+      color: var(--mantine-color-brand-filled);
+    }
+  }
+
+  &:focus-visible {
+    box-shadow: 0 0 0 2px var(--mantine-color-brand-filled);
+  }
+}
+
+@media (hover: hover) {
+  a.link:not(.active):hover,
+  button.link:hover {
+    color: light-dark(var(--mantine-color-dark-9), var(--mantine-color-white));
+    background: light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-6));
+  }
+}
+
+.label {
+  flex: 1;
+  // overflow: hidden clips descenders (g, y, p) when the line box is tight.
+  line-height: 20px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hint {
+  flex-shrink: 0;
+  max-width: 45%;
+  overflow: hidden;
+  font-size: var(--mantine-font-size-xs);
+  font-weight: 400;
+  color: var(--mantine-color-dimmed);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// Button flavor (actions, not navigation): reset the native look.
+button.link {
+  width: 100%;
+  margin: 0;
+  font-family: inherit;
+  text-align: left;
+  background: none;
+  border: 0;
+}

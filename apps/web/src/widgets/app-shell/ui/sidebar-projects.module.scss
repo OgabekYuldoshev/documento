@@ -1,12 +1,18 @@
-.label {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+// Tree: children sit under the parent's icon column, tied to it by a thin guide line.
+.tree {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-left: 18px;
+  padding-left: 8px;
+  border-left: 1px solid var(--app-border);
 }
 
-// Tree guide: a thin line down the folder's icon column ties sections to their project.
 .sections {
-  margin: 2px 0 4px 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin: 1px 0 3px 15px;
   padding-left: 8px;
   border-left: 1px solid var(--app-border);
 }

@@ -5,7 +5,7 @@ import {
   restoreVersionSchema,
   saveDraftSchema,
 } from "@documento/shared";
-import { router } from "../../trpc/init";
+import { protectedProcedure, router } from "../../trpc/init";
 import { assetsService } from "../assets/assets.service";
 import { projectProcedure } from "../projects/project-procedure";
 import { renderPreview, renderPreviewSvg } from "../render/render.service";
@@ -13,6 +13,8 @@ import { templateProcedure } from "./template-procedure";
 import { templatesService } from "./templates.service";
 
 export const templatesRouter = router({
+  recent: protectedProcedure.query(({ ctx }) => templatesService.recent(ctx.actor)),
+
   list: projectProcedure.query(({ ctx }) => templatesService.list(ctx.project)),
 
   create: projectProcedure

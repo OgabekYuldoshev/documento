@@ -1,13 +1,29 @@
-import { and, desc, eq, isNotNull, lte } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNotNull, lte, sql } from "drizzle-orm";
 import { db, schema } from "../../db/client";
 import type { GenerationStatus } from "../../db/schema";
 
-const { generation } = schema;
+const { generation, project } = schema;
 
 export type NewGeneration = typeof generation.$inferInsert;
 export type GenerationPatch = Partial<Omit<NewGeneration, "id">>;
 
 export const generationsRepository = {
+  /** Running jobs and recent failures across the projects in scope (sidebar status). */
+  async activity(filter: { ownerId?: string }, failedSince: Date) {
+    const [row] = await db
+      .select({
+        running: sql<number>`count(*) filter (where ${inArray(generation.status, ["queued", "processing"])})`,
+        failed: sql<number>`count(*) filter (where ${and(
+          inArray(generation.status, ["render_error", "timeout"]),
+          gte(generation.queuedAt, failedSince),
+        )})`,
+      })
+      .from(generation)
+      .innerJoin(project, eq(project.id, generation.projectId))
+      .where(filter.ownerId ? eq(project.ownerId, filter.ownerId) : undefined);
+    return { running: Number(row?.running ?? 0), failed: Number(row?.failed ?? 0) };
+  },
+
   async insert(values: NewGeneration) {
     const [row] = await db.insert(generation).values(values).returning();
     if (!row) throw new Error("generation insert returned no row");

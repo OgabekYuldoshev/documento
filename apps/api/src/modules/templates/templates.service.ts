@@ -4,6 +4,7 @@ import {
   DEFAULT_TEMPLATE_JSON_SCHEMA,
   DEFAULT_TEMPLATE_SOURCE,
   diffSchemas,
+  isAdminRole,
   type SaveDraftInput,
   sampleFromSchema,
   TEMPLATE_SOURCE_MAX_BYTES,
@@ -19,7 +20,7 @@ import { runPublishDryRun } from "../render/render.service";
 import { templatesRepository as repo } from "./templates.repository";
 import { assertSchemaCompiles, SchemaDefinitionError, validateData } from "./validate-data";
 
-type Actor = { id: string };
+type Actor = { id: string; role: Parameters<typeof isAdminRole>[0] };
 
 const MAX_SLUG_ATTEMPTS = 20;
 
@@ -68,6 +69,10 @@ function describeErrors(errors: { path: string; message: string }[]) {
 }
 
 export const templatesService = {
+  /** Most recently edited templates of the projects the actor can access (sidebar shortcut). */
+  recent: (actor: Actor, limit = 3) =>
+    repo.recent(isAdminRole(actor.role) ? {} : { ownerId: actor.id }, limit),
+
   async list(project: Project) {
     const templates = await repo.listByProject(project.id);
     const versions = await repo.versionSummaries(templates.map((t) => t.id));

@@ -1,7 +1,7 @@
 import { and, desc, eq, inArray, isNull, max } from "drizzle-orm";
 import { db, schema } from "../../db/client";
 
-const { template, templateVersion } = schema;
+const { template, templateVersion, project } = schema;
 
 /** The shared db or a transaction handle. */
 export type Executor = Pick<typeof db, "select" | "insert" | "update">;
@@ -26,6 +26,32 @@ export type VersionPatch = Partial<
 const first = <T>(rows: T[]) => rows[0] ?? null;
 
 export const templatesRepository = {
+  /** Templates touched most recently (any version edited), across the actor's projects. */
+  recent(filter: { ownerId?: string }, limit: number) {
+    const touchedAt = max(templateVersion.updatedAt);
+    return db
+      .select({
+        id: template.id,
+        name: template.name,
+        projectId: template.projectId,
+        projectName: project.name,
+        touchedAt,
+      })
+      .from(template)
+      .innerJoin(project, eq(project.id, template.projectId))
+      .innerJoin(templateVersion, eq(templateVersion.templateId, template.id))
+      .where(
+        and(
+          isNull(template.archivedAt),
+          isNull(project.archivedAt),
+          filter.ownerId ? eq(project.ownerId, filter.ownerId) : undefined,
+        ),
+      )
+      .groupBy(template.id)
+      .orderBy(desc(touchedAt))
+      .limit(limit);
+  },
+
   async insertTemplate(values: NewTemplate, x: Executor = db) {
     const row = first(await x.insert(template).values(values).returning());
     if (!row) throw new Error("template insert returned no row");
