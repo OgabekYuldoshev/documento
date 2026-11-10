@@ -1,7 +1,8 @@
 import { Button, Center, Group, Loader, Stack, Tabs, Text, Title } from "@mantine/core";
 import { IconArchive } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
-import { Link, useNavigate, useParams } from "react-router";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router";
+import { DEFAULT_SECTION, PROJECT_SECTIONS, parseSection } from "@/entities/project";
 import { ArchiveProjectButton } from "@/features/projects/archive-project";
 import { ProjectSettingsForm } from "@/features/projects/update-project";
 import { trpc } from "@/shared/api";
@@ -14,6 +15,8 @@ import { TemplatesGrid } from "@/widgets/templates-grid";
 export function ProjectPage() {
   const { projectId = "" } = useParams();
   const navigate = useNavigate();
+  const [params, setParams] = useSearchParams();
+  const section = parseSection(params.get("tab"));
   const {
     data: project,
     isPending,
@@ -44,12 +47,19 @@ export function ProjectPage() {
   return (
     <>
       <PageHeader title={project.name} description={project.description ?? undefined} />
-      <Tabs defaultValue="templates" keepMounted={false}>
+      <Tabs
+        value={section}
+        keepMounted={false}
+        onChange={(value) =>
+          setParams(value && value !== DEFAULT_SECTION ? { tab: value } : {}, { replace: true })
+        }
+      >
         <Tabs.List mb="lg">
-          <Tabs.Tab value="templates">Shablonlar</Tabs.Tab>
-          <Tabs.Tab value="documents">Hujjatlar</Tabs.Tab>
-          <Tabs.Tab value="keys">API keylar</Tabs.Tab>
-          <Tabs.Tab value="settings">Sozlamalar</Tabs.Tab>
+          {PROJECT_SECTIONS.map((item) => (
+            <Tabs.Tab key={item.value} value={item.value}>
+              {item.label}
+            </Tabs.Tab>
+          ))}
         </Tabs.List>
         <Tabs.Panel value="templates">
           <TemplatesGrid projectId={project.id} />

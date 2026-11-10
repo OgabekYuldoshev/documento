@@ -9,7 +9,8 @@ export function ColorSchemeToggle() {
   return (
     <Tooltip label={next === "dark" ? "Tungi rejim" : "Kunduzgi rejim"}>
       <ActionIcon
-        variant="default"
+        variant="light"
+        color="gray"
         size="lg"
         aria-label="Rejimni almashtirish"
         onClick={() => setColorScheme(next)}

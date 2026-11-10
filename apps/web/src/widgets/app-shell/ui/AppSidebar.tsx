@@ -13,6 +13,7 @@ import { NavLink as RouterLink } from "react-router";
 import { useSession } from "@/entities/session";
 import { ROUTES } from "@/shared/config";
 import { getVisibleNavigation } from "../model/navigation";
+import { ProjectsNavLink } from "./projects-nav-link";
 import { SidebarProjects } from "./SidebarProjects";
 import { SidebarUserMenu } from "./sidebar-user-menu";
 
@@ -62,14 +63,23 @@ export function AppSidebar({ onNavigate }: { onNavigate: () => void }) {
               )}
               {group.items.map((item) => (
                 <Fragment key={item.to}>
-                  <NavLink
-                    component={RouterLink}
-                    to={item.to}
-                    end={item.to === ROUTES.dashboard || item.to === ROUTES.projects}
-                    label={item.label}
-                    leftSection={<item.icon size={19} stroke={1.6} />}
-                    onClick={onNavigate}
-                  />
+                  {item.to === ROUTES.projects ? (
+                    <ProjectsNavLink
+                      to={item.to}
+                      label={item.label}
+                      leftSection={<item.icon size={19} stroke={1.6} />}
+                      onNavigate={onNavigate}
+                    />
+                  ) : (
+                    <NavLink
+                      component={RouterLink}
+                      to={item.to}
+                      end={item.to === ROUTES.dashboard}
+                      label={item.label}
+                      leftSection={<item.icon size={19} stroke={1.6} />}
+                      onClick={onNavigate}
+                    />
+                  )}
                   {item.to === ROUTES.projects && <SidebarProjects onNavigate={onNavigate} />}
                 </Fragment>
               ))}

@@ -1,0 +1,24 @@
+// Quiet active state (Linear/Notion): a neutral wash, brand-colored text and a slim accent bar,
+// instead of Mantine's saturated filled "light" background. !important is needed because
+// Mantine sets --nl-bg / --nl-color as inline variables.
+.root {
+  position: relative;
+
+  &[data-active] {
+    /* biome-ignore lint/complexity/noImportantStyles: overrides Mantine's inline variables */
+    --nl-bg: light-dark(var(--mantine-color-gray-1), var(--mantine-color-dark-5)) !important;
+    /* biome-ignore lint/complexity/noImportantStyles: overrides Mantine's inline variables */
+    --nl-color: light-dark(var(--mantine-color-brand-7), var(--mantine-color-brand-2)) !important;
+
+    &::before {
+      content: "";
+      position: absolute;
+      top: 8px;
+      bottom: 8px;
+      left: 0;
+      width: 3px;
+      border-radius: 0 3px 3px 0;
+      background: var(--mantine-color-brand-filled);
+    }
+  }
+}

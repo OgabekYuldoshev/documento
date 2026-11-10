@@ -1,0 +1,21 @@
+// Borderless field in the same tint as the header icon buttons; brighter on hover.
+// `button` raises specificity above Mantine's UnstyledButton reset (transparent background).
+button.trigger {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 0 12px;
+  height: 36px;
+  color: var(--mantine-color-dimmed);
+  background: var(--mantine-color-gray-light);
+  border: 0;
+  border-radius: var(--mantine-radius-default);
+  transition: background-color 120ms ease;
+}
+
+@media (hover: hover) {
+  button.trigger:hover {
+    background: var(--mantine-color-gray-light-hover);
+  }
+}

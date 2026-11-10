@@ -1,6 +1,7 @@
-import { ActionIcon, Burger, Group, Tooltip } from "@mantine/core";
+import { ActionIcon, Box, Burger, Group, Tooltip } from "@mantine/core";
 import { IconLayoutSidebar } from "@tabler/icons-react";
 import { ColorSchemeToggle } from "@/features/theme/toggle-color-scheme";
+import { SearchSpotlight, SearchTrigger } from "./SearchSpotlight";
 
 type AppHeaderProps = {
   mobileOpened: boolean;
@@ -15,7 +16,8 @@ export function AppHeader({ mobileOpened, onToggleMobile, onToggleDesktop }: App
         <Burger opened={mobileOpened} onClick={onToggleMobile} hiddenFrom="sm" size="sm" />
         <Tooltip label="Toggle sidebar">
           <ActionIcon
-            variant="default"
+            variant="light"
+            color="gray"
             size="lg"
             visibleFrom="sm"
             aria-label="Toggle sidebar"
@@ -26,7 +28,13 @@ export function AppHeader({ mobileOpened, onToggleMobile, onToggleDesktop }: App
         </Tooltip>
       </Group>
 
-      <ColorSchemeToggle />
+      <Group gap="sm" wrap="nowrap">
+        <Box w={{ base: 160, sm: 240 }}>
+          <SearchTrigger />
+        </Box>
+        <SearchSpotlight />
+        <ColorSchemeToggle />
+      </Group>
     </Group>
   );
 }
