@@ -84,6 +84,10 @@ export const projectsService = {
     return projectsRepository.list(actor.role === "superadmin" ? {} : { userId: actor.id });
   },
 
+  page(actor: Actor, input: { limit: number; offset: number; search?: string }) {
+    return projectsRepository.page(actor.role === "superadmin" ? {} : { userId: actor.id }, input);
+  },
+
   /** Any access: owner, member or superadmin. */
   async get(actor: Actor, id: string): Promise<Project> {
     const project = await projectsRepository.findById(id);

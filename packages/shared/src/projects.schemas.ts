@@ -14,6 +14,16 @@ const descriptionSchema = z
   .trim()
   .max(PROJECT_DESCRIPTION_MAX, `Ko'pi bilan ${PROJECT_DESCRIPTION_MAX} ta belgi`);
 
+export const PROJECTS_PAGE_MAX = 100;
+
+/** Server-side paging for the projects table. */
+export const listProjectsSchema = z.object({
+  limit: z.number().int().min(1).max(PROJECTS_PAGE_MAX).default(25),
+  offset: z.number().int().min(0).default(0),
+  search: z.string().trim().max(100).optional(),
+});
+export type ListProjectsInput = z.input<typeof listProjectsSchema>;
+
 export const projectIdSchema = z.object({ projectId: z.string().min(1) });
 
 export const createProjectSchema = z.object({

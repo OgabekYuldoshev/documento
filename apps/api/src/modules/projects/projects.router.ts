@@ -1,4 +1,4 @@
-import { createProjectSchema, updateProjectSchema } from "@documento/shared";
+import { createProjectSchema, listProjectsSchema, updateProjectSchema } from "@documento/shared";
 import { z } from "zod";
 import { protectedProcedure, router } from "../../trpc/init";
 import { managedProjectProcedure, projectProcedure } from "./project-procedure";
@@ -6,6 +6,10 @@ import { projectsService } from "./projects.service";
 
 export const projectsRouter = router({
   list: protectedProcedure.query(({ ctx }) => projectsService.list(ctx.actor)),
+
+  page: protectedProcedure
+    .input(listProjectsSchema)
+    .query(({ ctx, input }) => projectsService.page(ctx.actor, input)),
 
   create: protectedProcedure
     .input(createProjectSchema)

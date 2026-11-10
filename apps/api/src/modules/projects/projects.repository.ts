@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, isNull } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { db, schema } from "../../db/client";
 import { visibleTo } from "./access";
 
@@ -18,6 +18,11 @@ const {
 export type NewProject = typeof project.$inferInsert;
 export type ProjectPatch = Partial<Pick<NewProject, "name" | "description" | "retentionDays">>;
 
+const LIST_HARD_CAP = 500;
+
+const activeWhere = (userId?: string) =>
+  userId ? and(isNull(project.archivedAt), visibleTo(userId)) : isNull(project.archivedAt);
+
 export const projectsRepository = {
   async insert(values: NewProject) {
     const [row] = await db.insert(project).values(values).returning();
@@ -32,10 +37,41 @@ export const projectsRepository = {
 
   /** Active (non-archived) projects, newest first; `userId` = owned or joined by that user. */
   list(filter: { userId?: string } = {}) {
-    const where = filter.userId
-      ? and(isNull(project.archivedAt), visibleTo(filter.userId))
-      : isNull(project.archivedAt);
-    return db.select().from(project).where(where).orderBy(desc(project.createdAt));
+    // Hard cap: the sidebar/dashboard use this unpaged; `page` is the way to walk further.
+    return db
+      .select()
+      .from(project)
+      .where(activeWhere(filter.userId))
+      .orderBy(desc(project.createdAt))
+      .limit(LIST_HARD_CAP);
+  },
+
+  /** One page of active projects (optionally name/description search) plus the total count. */
+  async page(
+    filter: { userId?: string },
+    paging: { limit: number; offset: number; search?: string },
+  ) {
+    const term = paging.search?.replace(/[\\%_]/g, (c) => `\\${c}`);
+    const where = and(
+      activeWhere(filter.userId),
+      term
+        ? or(
+            sql`${project.name} like ${`%${term}%`} escape '\\'`,
+            sql`${project.description} like ${`%${term}%`} escape '\\'`,
+          )
+        : undefined,
+    );
+    const [items, [totals]] = await Promise.all([
+      db
+        .select()
+        .from(project)
+        .where(where)
+        .orderBy(desc(project.createdAt), desc(project.id))
+        .limit(paging.limit)
+        .offset(paging.offset),
+      db.select({ n: sql<number>`count(*)` }).from(project).where(where),
+    ]);
+    return { items, total: Number(totals?.n ?? 0) };
   },
 
   async update(id: string, patch: ProjectPatch) {

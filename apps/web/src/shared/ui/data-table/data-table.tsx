@@ -49,6 +49,19 @@ export type DataTableProps<TData extends object> = {
   emptyAction?: ReactNode;
   minWidth?: number;
   onRowClick?: (row: TData) => void;
+  /**
+   * Server-owned paging + search: `data` is the current page only. The parent fetches by
+   * `pageIndex`/`pageSize`/`search`; sorting is off (it would only reorder one page).
+   */
+  serverSide?: {
+    rowCount: number;
+    pageIndex: number;
+    pageSize: number;
+    onPageIndexChange: (pageIndex: number) => void;
+    onPageSizeChange: (pageSize: number) => void;
+    search: string;
+    onSearchChange: (search: string) => void;
+  };
 };
 
 export function DataTable<TData extends object>({
@@ -68,13 +81,18 @@ export function DataTable<TData extends object>({
   emptyAction,
   minWidth = 720,
   onRowClick,
+  serverSide,
 }: DataTableProps<TData>) {
-  const [search, setSearch] = useState("");
+  const [localSearch, setLocalSearch] = useState("");
+  const search = serverSide ? serverSide.search : localSearch;
 
   const table = useTable({
     features: dataTableFeatures,
     columns,
     data: data ?? EMPTY,
+    manualPagination: !!serverSide,
+    rowCount: serverSide?.rowCount,
+    enableSorting: !serverSide,
     getRowId,
     globalFilterFn: "includesString",
     initialState: {
@@ -84,8 +102,15 @@ export function DataTable<TData extends object>({
   });
 
   const rows = table.getRowModel().rows;
-  const totalRows = table.getRowCount();
-  const { pageIndex, pageSize: currentPageSize } = table.state.pagination;
+  const totalRows = serverSide ? serverSide.rowCount : table.getRowCount();
+  const { pageIndex, pageSize: currentPageSize } = serverSide
+    ? { pageIndex: serverSide.pageIndex, pageSize: serverSide.pageSize }
+    : table.state.pagination;
+  const pageCount = Math.max(1, Math.ceil(totalRows / currentPageSize));
+  const setPageIndex = (i: number) =>
+    serverSide ? serverSide.onPageIndexChange(i) : table.setPageIndex(i);
+  const setPageSize = (n: number) =>
+    serverSide ? serverSide.onPageSizeChange(n) : table.setPageSize(n);
   const from = totalRows === 0 ? 0 : pageIndex * currentPageSize + 1;
   const to = Math.min((pageIndex + 1) * currentPageSize, totalRows);
   const showToolbar = searchable || toolbar;
@@ -101,8 +126,12 @@ export function DataTable<TData extends object>({
               leftSection={<IconSearch size={16} />}
               value={search}
               onChange={(event) => {
-                setSearch(event.currentTarget.value);
-                table.setGlobalFilter(event.currentTarget.value);
+                if (serverSide) {
+                  serverSide.onSearchChange(event.currentTarget.value);
+                } else {
+                  setLocalSearch(event.currentTarget.value);
+                  table.setGlobalFilter(event.currentTarget.value);
+                }
               }}
               aria-label={searchPlaceholder}
             />
@@ -220,15 +249,15 @@ export function DataTable<TData extends object>({
                   aria-label="Sahifadagi qatorlar soni"
                   data={pageSizeOptions.map((n) => ({ value: String(n), label: `${n} ta` }))}
                   value={String(currentPageSize)}
-                  onChange={(value) => value && table.setPageSize(Number(value))}
+                  onChange={(value) => value && setPageSize(Number(value))}
                 />
               </Group>
-              {table.getPageCount() > 1 && (
+              {pageCount > 1 && (
                 <Pagination
                   size="sm"
-                  total={table.getPageCount()}
+                  total={pageCount}
                   value={pageIndex + 1}
-                  onChange={(page) => table.setPageIndex(page - 1)}
+                  onChange={(page) => setPageIndex(page - 1)}
                   withEdges
                 />
               )}
