@@ -80,7 +80,17 @@ export function useDraftEditor(projectId: string, templateId: string, draft: Tem
   const [breaking, setBreaking] = useState<string | null>(null);
 
   const dirty = JSON.stringify(form) !== JSON.stringify(saved);
-  const patch = (p: Partial<Snapshot>) => setForm((f) => ({ ...f, ...p }));
+  const patch = (p: Partial<Snapshot>) =>
+    setForm((f) => {
+      const next = { ...f, ...p };
+      // Keep the sample in step with the schema until the user edits the sample by hand.
+      if (p.schemaText !== undefined && p.sampleText === undefined) {
+        const untouched = f.sampleText === sampleTextFromSchema(f.schemaText);
+        const regenerated = untouched ? sampleTextFromSchema(p.schemaText) : null;
+        if (regenerated) next.sampleText = regenerated;
+      }
+      return next;
+    });
 
   const saveMutation = useMutation({
     ...trpc.templates.saveDraft.mutationOptions(),

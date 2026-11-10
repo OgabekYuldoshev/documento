@@ -102,7 +102,7 @@ export const templatesService = {
           status: "draft",
           source: DEFAULT_TEMPLATE_SOURCE,
           schema: DEFAULT_TEMPLATE_JSON_SCHEMA,
-          sampleData: {},
+          sampleData: sampleFromSchema(templateSchemaSchema.parse(DEFAULT_TEMPLATE_JSON_SCHEMA)),
         },
         tx,
       );
