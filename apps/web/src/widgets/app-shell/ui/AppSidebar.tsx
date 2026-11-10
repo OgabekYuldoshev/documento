@@ -64,7 +64,7 @@ export function AppSidebar({ onNavigate }: { onNavigate: () => void }) {
         </Stack>
       </MantineAppShell.Section>
 
-      <MantineAppShell.Section p="md" style={{ borderTop: "1px solid var(--app-border)" }}>
+      <MantineAppShell.Section p="sm" style={{ borderTop: "1px solid var(--app-border)" }}>
         <SidebarUserMenu />
       </MantineAppShell.Section>
     </>
