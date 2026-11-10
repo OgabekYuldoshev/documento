@@ -14,6 +14,7 @@ import {
   IconAlertTriangle,
   IconChevronDown,
   IconChevronUp,
+  IconDownload,
   IconFileOff,
   IconZoomIn,
   IconZoomOut,
@@ -27,6 +28,8 @@ type Props = {
   rendering: boolean;
   /** Called when the author clicks a problem that points to a source line. */
   onJumpToLine: (line: number) => void;
+  onDownload: () => void;
+  downloading: boolean;
 };
 
 // Scale is relative to the viewer width: 1 = page fits the width.
@@ -35,7 +38,14 @@ const MAX_SCALE = 3;
 const STEP = 0.25;
 
 /** Typst page viewer: stacked SVG pages on a canvas, zoom, page counter and a problems drawer. */
-export function PreviewViewer({ preview, problem, rendering, onJumpToLine }: Props) {
+export function PreviewViewer({
+  preview,
+  problem,
+  rendering,
+  onJumpToLine,
+  onDownload,
+  downloading,
+}: Props) {
   const [scale, setScale] = useState(1);
   const [page, setPage] = useState(1);
   const [problemsOpen, setProblemsOpen] = useState(true);
@@ -131,6 +141,18 @@ export function PreviewViewer({ preview, problem, rendering, onJumpToLine }: Pro
               onClick={() => zoom(STEP)}
             >
               <IconZoomIn size={16} />
+            </ActionIcon>
+          </Tooltip>
+          <Tooltip label="PDF yuklab olish">
+            <ActionIcon
+              variant="subtle"
+              color="gray"
+              aria-label="PDF yuklab olish"
+              loading={downloading}
+              disabled={!preview}
+              onClick={onDownload}
+            >
+              <IconDownload size={16} />
             </ActionIcon>
           </Tooltip>
         </Group>

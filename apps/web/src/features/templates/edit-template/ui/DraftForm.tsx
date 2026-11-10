@@ -258,6 +258,8 @@ export function DraftForm({
           problem={ed.problem}
           rendering={ed.previewing}
           onJumpToLine={jumpToLine}
+          onDownload={() => ed.downloadPdf(title)}
+          downloading={ed.downloading}
         />
       }
     />

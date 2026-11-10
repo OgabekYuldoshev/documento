@@ -8,7 +8,7 @@ import {
 import { router } from "../../trpc/init";
 import { assetsService } from "../assets/assets.service";
 import { projectProcedure } from "../projects/project-procedure";
-import { renderPreviewSvg } from "../render/render.service";
+import { renderPreview, renderPreviewSvg } from "../render/render.service";
 import { templateProcedure } from "./template-procedure";
 import { templatesService } from "./templates.service";
 
@@ -57,6 +57,20 @@ export const templatesRouter = router({
       pages: result.pages,
       durationMs: result.durationMs,
     };
+  }),
+
+  /** Same render as `preview`, but as a real PDF (base64, <= 20 MB) for downloading. */
+  previewPdf: templateProcedure.input(previewSchema).mutation(async ({ ctx, input }) => {
+    const result = await renderPreview({
+      source: input.source,
+      schema: input.schema,
+      data: input.sampleData,
+      timeoutSec: input.renderTimeoutSec,
+      assets: await assetsService.forRender(ctx.template.id),
+      images: { placeholder: true },
+    });
+    if (!result.ok) return result;
+    return { ok: true as const, pdfBase64: result.pdf.toString("base64") };
   }),
 
   versions: templateProcedure.query(({ ctx }) => templatesService.versions(ctx.template)),

@@ -98,6 +98,7 @@ export function useDraftEditor(projectId: string, templateId: string, draft: Tem
   });
   const publishMutation = useMutation(trpc.templates.publish.mutationOptions());
   const previewMutation = useMutation(trpc.templates.preview.mutationOptions());
+  const pdfMutation = useMutation(trpc.templates.previewPdf.mutationOptions());
   // The last good render stays on screen while a newer one runs or fails (no flashing).
   const [preview, setPreview] = useState<PreviewPages | null>(null);
   const [problem, setProblem] = useState<PreviewProblem | null>(null);
@@ -232,6 +233,39 @@ export function useDraftEditor(projectId: string, templateId: string, draft: Tem
     problem,
     previewing: previewMutation.isPending,
     runPreview: () => runPreview(true),
+    downloading: pdfMutation.isPending,
+    /** Renders the current editor state as PDF and saves it through the browser. */
+    downloadPdf: async (fileName: string) => {
+      const schema = parseObject(form.schemaText);
+      const sampleData = parseObject(form.sampleText);
+      if (!schema || !sampleData) {
+        notify.error("Schema yoki namuna ma'lumot to'g'ri JSON emas");
+        return;
+      }
+      try {
+        const r = await pdfMutation.mutateAsync({
+          projectId,
+          templateId,
+          source: form.source,
+          schema,
+          sampleData,
+          renderTimeoutSec: form.renderTimeoutSec,
+        });
+        if (!r.ok) {
+          notify.error(FAILURE_TITLES[r.kind] ?? "PDF yaratib bo'lmadi");
+          return;
+        }
+        const bytes = Uint8Array.from(atob(r.pdfBase64), (c) => c.charCodeAt(0));
+        const url = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${fileName}.pdf`;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 10_000);
+      } catch (error) {
+        notify.error(getErrorMessage(error));
+      }
+    },
     fillSample: () => {
       const text = sampleTextFromSchema(form.schemaText);
       if (text) patch({ sampleText: text });
