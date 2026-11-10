@@ -1,64 +1,81 @@
-import { Anchor, Box, Breadcrumbs, Group, Text, Title } from "@mantine/core";
+import { ActionIcon, Anchor, Box, Breadcrumbs, Group, Text, Tooltip } from "@mantine/core";
+import { IconArrowLeft } from "@tabler/icons-react";
 import type { ReactNode } from "react";
 import { Link } from "react-router";
-
-export type WorkspaceTab = { value: string; label: string; content: ReactNode };
 
 type Props = {
   breadcrumbs: { label: string; to: string }[];
   title: string;
+  /** Shown as a tooltip on the title (keeps the bar to a single row). */
   description?: string;
   badges?: ReactNode;
   actions?: ReactNode;
+  /** Far right of the bar (e.g. the color scheme toggle, composed by the page). */
+  endSlot?: ReactNode;
   children: ReactNode;
 };
 
-/** Full-height template workspace: compact header on top, content filling the rest. */
+/** Full-screen editor frame: a slim top bar with back link and actions, content below. */
 export function WorkspaceFrame({
   breadcrumbs,
   title,
   description,
   badges,
   actions,
+  endSlot,
   children,
 }: Props) {
+  const back = breadcrumbs[breadcrumbs.length - 1];
   return (
-    <Box
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        // Viewport minus the app header and the shell's vertical padding.
-        height:
-          "calc(100dvh - var(--app-shell-header-height, 64px) - 2 * var(--mantine-spacing-lg))",
-        minHeight: 640,
-      }}
-    >
-      <Breadcrumbs mb={4}>
-        {breadcrumbs.map((crumb) => (
-          <Anchor key={crumb.to} component={Link} to={crumb.to} size="xs">
-            {crumb.label}
-          </Anchor>
-        ))}
-      </Breadcrumbs>
-
-      <Group justify="space-between" align="center" wrap="wrap" mb="sm" gap="sm">
-        <Box miw={0}>
-          <Group gap="sm" wrap="nowrap">
-            <Title order={3} lineClamp={1}>
-              {title}
-            </Title>
-            {badges}
-          </Group>
-          {description && (
-            <Text size="sm" c="dimmed" lineClamp={1}>
-              {description}
-            </Text>
+    <>
+      <Group
+        component="header"
+        justify="space-between"
+        wrap="nowrap"
+        gap="sm"
+        h={52}
+        px="md"
+        style={{
+          flexShrink: 0,
+          borderBottom: "1px solid var(--app-border)",
+          background: "var(--app-surface)",
+        }}
+      >
+        <Group gap="sm" wrap="nowrap" miw={0}>
+          {back && (
+            <Tooltip label={`${back.label}ga qaytish`}>
+              <ActionIcon
+                component={Link}
+                to={back.to}
+                variant="subtle"
+                color="gray"
+                size="lg"
+                aria-label={`${back.label}ga qaytish`}
+              >
+                <IconArrowLeft size={18} />
+              </ActionIcon>
+            </Tooltip>
           )}
-        </Box>
-        {actions}
+          <Breadcrumbs separator="/" separatorMargin={6} style={{ flexWrap: "nowrap" }}>
+            {breadcrumbs.map((crumb) => (
+              <Anchor key={crumb.to} component={Link} to={crumb.to} size="sm" c="dimmed">
+                {crumb.label}
+              </Anchor>
+            ))}
+            <Text fw={700} fz="md" lineClamp={1} title={description}>
+              {title}
+            </Text>
+          </Breadcrumbs>
+          {badges}
+        </Group>
+        <Group gap="xs" wrap="nowrap">
+          {actions}
+          {endSlot}
+        </Group>
       </Group>
-
-      <Box style={{ flex: 1, minHeight: 0 }}>{children}</Box>
-    </Box>
+      <Box p="sm" style={{ flex: 1, minHeight: 0, overflow: "auto" }}>
+        {children}
+      </Box>
+    </>
   );
 }

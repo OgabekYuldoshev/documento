@@ -2,6 +2,7 @@ import { Center, Loader, Text } from "@mantine/core";
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "react-router";
 import { TemplateEditor } from "@/features/templates/edit-template";
+import { ColorSchemeToggle } from "@/features/theme/toggle-color-scheme";
 import { trpc } from "@/shared/api";
 
 export function TemplatePage() {
@@ -32,6 +33,7 @@ export function TemplatePage() {
       templateName={info.data.template.name}
       description={info.data.template.description ?? undefined}
       currentNumber={info.data.current?.number}
+      endSlot={<ColorSchemeToggle />}
     />
   );
 }

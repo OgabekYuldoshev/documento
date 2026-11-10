@@ -1,7 +1,16 @@
-import { ActionIcon, Code, CopyButton, Group, Stack, Tabs, Text, Tooltip } from "@mantine/core";
+import {
+  ActionIcon,
+  Code,
+  CopyButton,
+  Group,
+  SegmentedControl,
+  Stack,
+  Text,
+  Tooltip,
+} from "@mantine/core";
 import { IconCheck, IconCopy } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { trpc } from "@/shared/api";
 import { buildSnippets } from "../model/snippets";
 
@@ -18,6 +27,9 @@ export function ApiSnippets({ projectId, templateId }: Props) {
     [data],
   );
 
+  const [lang, setLang] = useState<string | undefined>();
+  const active = snippets.find((s) => s.id === lang) ?? snippets[0];
+
   if (!data) {
     return (
       <Text size="sm" c="dimmed">
@@ -32,33 +44,29 @@ export function ApiSnippets({ projectId, templateId }: Props) {
         v{data.version} uchun. API key'ni <Code>DOCUMENTO_API_KEY</Code> o'zgaruvchisiga qo'ying
         (project sahifasidagi "API keylar" bo'limida yaratiladi).
       </Text>
-      <Tabs defaultValue={snippets[0]?.id}>
-        <Tabs.List>
-          {snippets.map((s) => (
-            <Tabs.Tab key={s.id} value={s.id}>
-              {s.label}
-            </Tabs.Tab>
-          ))}
-        </Tabs.List>
-        {snippets.map((s) => (
-          <Tabs.Panel key={s.id} value={s.id} pt="sm">
-            <Group align="flex-start" wrap="nowrap" gap="xs">
-              <Code block style={{ flex: 1, overflowX: "auto" }}>
-                {s.code}
-              </Code>
-              <CopyButton value={s.code}>
-                {({ copied, copy }) => (
-                  <Tooltip label={copied ? "Nusxalandi" : "Nusxalash"}>
-                    <ActionIcon variant="subtle" onClick={copy} aria-label="Nusxalash">
-                      {copied ? <IconCheck size={16} /> : <IconCopy size={16} />}
-                    </ActionIcon>
-                  </Tooltip>
-                )}
-              </CopyButton>
-            </Group>
-          </Tabs.Panel>
-        ))}
-      </Tabs>
+      <SegmentedControl
+        size="xs"
+        w="fit-content"
+        value={active?.id}
+        onChange={setLang}
+        data={snippets.map((s) => ({ value: s.id, label: s.label }))}
+      />
+      {active && (
+        <Group align="flex-start" wrap="nowrap" gap="xs">
+          <Code block style={{ flex: 1, overflowX: "auto" }}>
+            {active.code}
+          </Code>
+          <CopyButton value={active.code}>
+            {({ copied, copy }) => (
+              <Tooltip label={copied ? "Nusxalandi" : "Nusxalash"}>
+                <ActionIcon variant="subtle" onClick={copy} aria-label="Nusxalash">
+                  {copied ? <IconCheck size={16} /> : <IconCopy size={16} />}
+                </ActionIcon>
+              </Tooltip>
+            )}
+          </CopyButton>
+        </Group>
+      )}
     </Stack>
   );
 }

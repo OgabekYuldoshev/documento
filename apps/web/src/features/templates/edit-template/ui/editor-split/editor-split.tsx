@@ -3,7 +3,9 @@ import { type KeyboardEvent, type PointerEvent, type ReactNode, useRef, useState
 import classes from "./editor-split.module.scss";
 
 const MIN = 0.3;
-const MAX = 0.7;
+// The editor needs more room than the viewer: pages scale to any width, code does not.
+const DEFAULT = 0.56;
+const MAX = 0.75;
 const KEY_STEP = 0.02;
 const clamp = (n: number) => Math.min(MAX, Math.max(MIN, n));
 
@@ -12,7 +14,10 @@ type Props = { left: ReactNode; right: ReactNode };
 /** Two resizable panes side by side on wide screens, stacked below 75em. */
 export function EditorSplit({ left, right }: Props) {
   const wide = useMediaQuery("(min-width: 75em)", true);
-  const [stored, setStored] = useLocalStorage({ key: "documento-editor-split", defaultValue: 0.5 });
+  const [stored, setStored] = useLocalStorage({
+    key: "documento-editor-split",
+    defaultValue: DEFAULT,
+  });
   const [drag, setDrag] = useState<number | null>(null);
   const root = useRef<HTMLDivElement>(null);
 
@@ -43,7 +48,7 @@ export function EditorSplit({ left, right }: Props) {
   const onKey = (e: KeyboardEvent<HTMLDivElement>) => {
     if (e.key === "ArrowLeft") setStored(clamp(ratio - KEY_STEP));
     else if (e.key === "ArrowRight") setStored(clamp(ratio + KEY_STEP));
-    else if (e.key === "Home") setStored(0.5);
+    else if (e.key === "Home") setStored(DEFAULT);
   };
 
   return (
@@ -71,7 +76,7 @@ export function EditorSplit({ left, right }: Props) {
         onPointerMove={move}
         onPointerUp={stop}
         onPointerCancel={stop}
-        onDoubleClick={() => setStored(0.5)}
+        onDoubleClick={() => setStored(DEFAULT)}
         onKeyDown={onKey}
       />
       <div className={classes.pane}>{right}</div>

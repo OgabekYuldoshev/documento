@@ -1,18 +1,41 @@
 import { EditorView } from "@codemirror/view";
-import { Badge, Box, Button, Group, NumberInput, Stack, Tabs, Text, Tooltip } from "@mantine/core";
-import { IconDeviceFloppy, IconRocket, IconWand } from "@tabler/icons-react";
+import {
+  ActionIcon,
+  Badge,
+  Box,
+  Button,
+  Collapse,
+  Divider,
+  Group,
+  Modal,
+  NumberInput,
+  SegmentedControl,
+  Stack,
+  Text,
+  Tooltip,
+} from "@mantine/core";
+import { useLocalStorage, useMediaQuery } from "@mantine/hooks";
+import {
+  IconDeviceFloppy,
+  IconInfoCircle,
+  IconLayoutSidebar,
+  IconRocket,
+  IconWand,
+} from "@tabler/icons-react";
 import type { ReactCodeMirrorRef } from "@uiw/react-codemirror";
-import { Fragment, useRef, useState } from "react";
+import { type ReactNode, useRef, useState } from "react";
 import type { TemplateDraft } from "@/entities/template";
 import { ConfirmModal } from "@/shared/ui";
 import { useDraftEditor } from "../model/useDraftEditor";
-import { AssetsPanel } from "./AssetsPanel";
 import { EditorSplit } from "./editor-split";
+import { FileTree } from "./FileTree";
+import { TEMPLATE_FILES, type TemplateFile } from "./files";
 import { JsonEditor } from "./JsonEditor";
 import { PreviewViewer } from "./PreviewViewer";
+import { type Panel, PanelButtons, ReferenceDrawers } from "./ReferencePanels";
 import { SchemaEditor } from "./SchemaEditor";
 import { SourceEditor } from "./SourceEditor";
-import { WorkspaceFrame, type WorkspaceTab } from "./WorkspaceFrame";
+import { WorkspaceFrame } from "./WorkspaceFrame";
 
 type Props = {
   projectId: string;
@@ -21,9 +44,23 @@ type Props = {
   title: string;
   description?: string;
   breadcrumbs: { label: string; to: string }[];
-  /** Tabs shown after the editor (API snippets, version history). */
-  extraTabs: WorkspaceTab[];
+  apiPanel: ReactNode;
+  versionsPanel: ReactNode;
+  endSlot?: ReactNode;
 };
+
+const TREE_WIDTH = 188;
+// The tree eats width the editor needs: open it by default only on really wide screens.
+const TREE_DEFAULT_OPEN = typeof window !== "undefined" && window.innerWidth >= 1600;
+const SOURCE_HINT =
+  "Ma'lumot #let data = json(\"data.json\") orqali o'qiladi. Sahifa o'lchami va shriftlar shu kodda belgilanadi.";
+
+const treeBoxStyle = {
+  overflow: "auto",
+  border: "1px solid var(--app-border)",
+  borderRadius: "var(--mantine-radius-md)",
+  background: "var(--app-surface)",
+} as const;
 
 export function DraftForm({
   projectId,
@@ -32,16 +69,26 @@ export function DraftForm({
   title,
   description,
   breadcrumbs,
-  extraTabs,
+  apiPanel,
+  versionsPanel,
+  endSlot,
 }: Props) {
   const ed = useDraftEditor(projectId, templateId, draft);
   const { form, patch } = ed;
-  const [tab, setTab] = useState<string | null>("source");
+  const wide = useMediaQuery("(min-width: 75em)", true);
+  const [treeOpen, setTreeOpen] = useLocalStorage({
+    key: "documento-file-tree",
+    defaultValue: TREE_DEFAULT_OPEN,
+  });
+  const [file, setFile] = useState<TemplateFile>("source");
+  const [panel, setPanel] = useState<Panel | null>(null);
   const sourceRef = useRef<ReactCodeMirrorRef>(null);
 
-  /** Switches to the code tab and puts the cursor on `line` (from a Typst diagnostic). */
+  const fileName = TEMPLATE_FILES.find((f) => f.id === file)?.name ?? "";
+
+  /** Opens main.typ and puts the cursor on `line` (from a Typst diagnostic). */
   function jumpToLine(line: number) {
-    setTab("source");
+    setFile("source");
     requestAnimationFrame(() => {
       const view = sourceRef.current?.view;
       if (!view) return;
@@ -54,129 +101,113 @@ export function DraftForm({
     });
   }
 
-  // One tab bar for everything: editing tabs first, API/Versiyalar pushed to the right.
+  // All three editors stay mounted (cursor, undo history, scroll) and are shown one at a time.
+  const pane = (id: TemplateFile, content: ReactNode) => (
+    <Box
+      style={{
+        flex: 1,
+        minHeight: 0,
+        display: file === id ? "flex" : "none",
+        flexDirection: "column",
+      }}
+    >
+      {content}
+    </Box>
+  );
+
+  const tree = (
+    <FileTree projectId={projectId} templateId={templateId} active={file} onSelect={setFile} />
+  );
+
   const editor = (
-    <Tabs value={tab} onChange={setTab} keepMounted h="100%">
-      <EditorSplit
-        left={
-          <Box h="100%" style={{ display: "flex", flexDirection: "column" }}>
-            <Tabs.List mb="sm" style={{ flexWrap: "nowrap", overflowX: "auto", flexShrink: 0 }}>
-              <Tabs.Tab value="source">Kod</Tabs.Tab>
-              <Tabs.Tab value="schema">Schema</Tabs.Tab>
-              <Tabs.Tab value="sample">Namuna</Tabs.Tab>
-              <Tabs.Tab value="assets">Fayllar</Tabs.Tab>
-              <Tabs.Tab value="limits">Limitlar</Tabs.Tab>
-              {extraTabs.map((t, i) => (
-                <Fragment key={t.value}>
-                  {i === 0 && (
-                    // Thin separator between the editing tabs and the reference tabs.
-                    <Box
-                      aria-hidden
-                      w={1}
-                      h={16}
-                      mx="xs"
-                      style={{ alignSelf: "center", background: "var(--app-border)" }}
-                    />
-                  )}
-                  <Tabs.Tab value={t.value}>{t.label}</Tabs.Tab>
-                </Fragment>
-              ))}
-            </Tabs.List>
+    <Box h="100%" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <Group justify="space-between" wrap="nowrap" h={32} style={{ flexShrink: 0 }}>
+        <Group gap={6} wrap="nowrap">
+          <Tooltip label={treeOpen ? "Fayllarni yashirish" : "Fayllarni ko'rsatish"}>
+            <ActionIcon
+              variant="subtle"
+              color="gray"
+              aria-label="Fayllar panelini almashtirish"
+              aria-pressed={treeOpen}
+              onClick={() => setTreeOpen((open) => !open)}
+            >
+              <IconLayoutSidebar size={16} />
+            </ActionIcon>
+          </Tooltip>
+          {treeOpen && wide ? (
+            <Text ff="monospace" size="sm" fw={600}>
+              {fileName}
+            </Text>
+          ) : (
+            // Without the tree, files are switched right here.
+            <SegmentedControl
+              size="xs"
+              value={file}
+              onChange={(v) => setFile(v as TemplateFile)}
+              data={TEMPLATE_FILES.map((f) => ({ value: f.id, label: f.name }))}
+              styles={{ label: { fontFamily: "var(--mantine-font-family-monospace)" } }}
+            />
+          )}
+          {file === "source" && (
+            <Tooltip multiline w={260} label={SOURCE_HINT}>
+              <IconInfoCircle size={15} color="var(--mantine-color-dimmed)" />
+            </Tooltip>
+          )}
+        </Group>
+        {file === "sample" && (
+          <Tooltip label="Schemadan avtomatik namuna yaratadi (hozirgi matnni almashtiradi)">
+            <Button
+              size="compact-xs"
+              variant="subtle"
+              leftSection={<IconWand size={14} />}
+              onClick={ed.fillSample}
+            >
+              Schemadan namuna
+            </Button>
+          </Tooltip>
+        )}
+      </Group>
 
-            <Tabs.Panel value="source" style={{ flex: 1, minHeight: 0 }}>
-              <Stack gap="xs" h="100%">
-                <SourceEditor
-                  editorRef={sourceRef}
-                  value={form.source}
-                  onChange={(source) => patch({ source })}
-                />
-                <Text size="xs" c="dimmed">
-                  Ma'lumot <code>#let data = json("data.json")</code> orqali o'qiladi. Sahifa
-                  o'lchami va shriftlar shu kodda belgilanadi.
-                </Text>
-              </Stack>
-            </Tabs.Panel>
-
-            <Tabs.Panel value="schema" style={{ flex: 1, minHeight: 0 }}>
-              <SchemaEditor
-                value={form.schemaText}
-                onChange={(schemaText) => patch({ schemaText })}
-              />
-            </Tabs.Panel>
-
-            <Tabs.Panel value="sample" style={{ flex: 1, minHeight: 0 }}>
-              <Stack gap="xs" h="100%">
-                <Group justify="flex-end">
-                  <Tooltip label="Schemadan avtomatik namuna yaratadi (hozirgi matnni almashtiradi)">
-                    <Button
-                      size="xs"
-                      variant="light"
-                      leftSection={<IconWand size={14} />}
-                      onClick={ed.fillSample}
-                    >
-                      Schemadan namuna
-                    </Button>
-                  </Tooltip>
-                </Group>
-                <JsonEditor
-                  label="Namuna ma'lumot"
-                  value={form.sampleText}
-                  onChange={(sampleText) => patch({ sampleText })}
-                />
-                <Text size="xs" c="dimmed">
-                  Publish paytida namuna ma'lumot schemaga mos kelishi tekshiriladi.
-                </Text>
-              </Stack>
-            </Tabs.Panel>
-
-            <Tabs.Panel value="assets" style={{ flex: 1, minHeight: 0, overflow: "auto" }}>
-              <AssetsPanel projectId={projectId} templateId={templateId} />
-            </Tabs.Panel>
-
-            <Tabs.Panel value="limits" style={{ flex: 1, minHeight: 0, overflow: "auto" }}>
-              <Stack>
-                <NumberInput
-                  label="Render vaqt limiti (soniya)"
-                  placeholder="Masalan: 30"
-                  min={1}
-                  max={300}
-                  allowDecimal={false}
-                  value={form.renderTimeoutSec}
-                  onChange={(v) => typeof v === "number" && patch({ renderTimeoutSec: v })}
-                />
-                <NumberInput
-                  label="Kiruvchi ma'lumot limiti (KB)"
-                  placeholder="Masalan: 512"
-                  description="Katta jadvalli hujjatlar uchun oshiring (10240 gacha)"
-                  min={1}
-                  max={10240}
-                  allowDecimal={false}
-                  value={form.maxPayloadKb}
-                  onChange={(v) => typeof v === "number" && patch({ maxPayloadKb: v })}
-                />
-              </Stack>
-            </Tabs.Panel>
-            {extraTabs.map((t) => (
-              <Tabs.Panel
-                key={t.value}
-                value={t.value}
-                style={{ flex: 1, minHeight: 0, overflow: "auto" }}
-              >
-                {t.content}
-              </Tabs.Panel>
-            ))}
-          </Box>
-        }
-        right={
-          <PreviewViewer
-            preview={ed.preview}
-            problem={ed.problem}
-            rendering={ed.previewing}
-            onJumpToLine={jumpToLine}
+      {pane(
+        "source",
+        <SourceEditor
+          editorRef={sourceRef}
+          value={form.source}
+          onChange={(source) => patch({ source })}
+        />,
+      )}
+      {pane(
+        "schema",
+        <SchemaEditor value={form.schemaText} onChange={(schemaText) => patch({ schemaText })} />,
+      )}
+      {pane(
+        "sample",
+        <Stack gap={6} h="100%">
+          <JsonEditor
+            label="Namuna ma'lumot"
+            value={form.sampleText}
+            onChange={(sampleText) => patch({ sampleText })}
           />
-        }
-      />
-    </Tabs>
+          <Text size="xs" c="dimmed">
+            Publish paytida namuna ma'lumot schemaga mos kelishi tekshiriladi.
+          </Text>
+        </Stack>,
+      )}
+    </Box>
+  );
+
+  const split = (
+    <EditorSplit
+      left={editor}
+      right={
+        <PreviewViewer
+          preview={ed.preview}
+          problem={ed.problem}
+          rendering={ed.previewing}
+          onJumpToLine={jumpToLine}
+        />
+      }
+    />
   );
 
   return (
@@ -185,6 +216,7 @@ export function DraftForm({
         breadcrumbs={breadcrumbs}
         title={title}
         description={description}
+        endSlot={endSlot}
         badges={
           <Group gap={6} wrap="nowrap">
             <Badge color="yellow" variant="light">
@@ -198,7 +230,9 @@ export function DraftForm({
           </Group>
         }
         actions={
-          <Group gap="xs">
+          <Group gap="xs" wrap="nowrap">
+            <PanelButtons onOpen={setPanel} />
+            <Divider orientation="vertical" my={6} />
             <Button
               variant="default"
               leftSection={<IconDeviceFloppy size={16} />}
@@ -218,8 +252,60 @@ export function DraftForm({
           </Group>
         }
       >
-        {editor}
+        {wide ? (
+          <Group h="100%" gap="md" align="stretch" wrap="nowrap">
+            {treeOpen && (
+              <Box w={TREE_WIDTH} style={{ flexShrink: 0, ...treeBoxStyle }}>
+                {tree}
+              </Box>
+            )}
+            <Box style={{ flex: 1, minWidth: 0 }}>{split}</Box>
+          </Group>
+        ) : (
+          <Stack gap="sm">
+            <Collapse expanded={treeOpen}>
+              <Box mah={240} style={treeBoxStyle}>
+                {tree}
+              </Box>
+            </Collapse>
+            {split}
+          </Stack>
+        )}
       </WorkspaceFrame>
+
+      <Modal opened={panel === "limits"} onClose={() => setPanel(null)} title="Limitlar" centered>
+        <Stack>
+          <NumberInput
+            label="Render vaqt limiti (soniya)"
+            placeholder="Masalan: 30"
+            min={1}
+            max={300}
+            allowDecimal={false}
+            value={form.renderTimeoutSec}
+            onChange={(v) => typeof v === "number" && patch({ renderTimeoutSec: v })}
+          />
+          <NumberInput
+            label="Kiruvchi ma'lumot limiti (KB)"
+            placeholder="Masalan: 512"
+            description="Katta jadvalli hujjatlar uchun oshiring (10240 gacha)"
+            min={1}
+            max={10240}
+            allowDecimal={false}
+            value={form.maxPayloadKb}
+            onChange={(v) => typeof v === "number" && patch({ maxPayloadKb: v })}
+          />
+          <Text size="xs" c="dimmed">
+            O'zgarishlar "Saqlash" bosilgach kuchga kiradi.
+          </Text>
+        </Stack>
+      </Modal>
+
+      <ReferenceDrawers
+        open={panel}
+        onClose={() => setPanel(null)}
+        apiPanel={apiPanel}
+        versionsPanel={versionsPanel}
+      />
 
       <ConfirmModal
         opened={ed.breaking !== null}

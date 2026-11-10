@@ -75,7 +75,7 @@ export function PreviewViewer({ preview, problem, rendering, onJumpToLine }: Pro
         justify="space-between"
         wrap="nowrap"
         px="sm"
-        h={44}
+        h={36}
         style={{ flexShrink: 0, borderBottom: "1px solid var(--app-border)" }}
       >
         <Group gap={8} wrap="nowrap" miw={0}>
