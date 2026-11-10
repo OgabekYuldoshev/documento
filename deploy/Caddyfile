@@ -1,0 +1,31 @@
+# SITE_ADDRESS is the public domain (Caddy gets and renews the TLS certificate by itself)
+# or ":80" for plain HTTP behind another proxy.
+{$SITE_ADDRESS} {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		X-Frame-Options SAMEORIGIN
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+
+	# Browser API (Better Auth + tRPC + files) and the external integration API. Caddy sets
+	# X-Forwarded-For to the real client address, which the sign-in throttle relies on.
+	@backend path /api/* /v1/*
+	handle @backend {
+		reverse_proxy api:3001
+	}
+
+	handle {
+		root * /srv
+		# Hashed build assets never change; the HTML shell must always be revalidated.
+		@assets path /assets/*
+		header @assets Cache-Control "public, max-age=31536000, immutable"
+		@shell not path /assets/*
+		header @shell Cache-Control "no-cache"
+		try_files {path} /index.html
+		file_server
+	}
+}

@@ -1,0 +1,15 @@
+.git
+**/node_modules
+**/dist
+**/.turbo
+.env
+.env.*
+!.env.docker.example
+**/*.db
+**/*.db-shm
+**/*.db-wal
+apps/api/data
+apps/api/fonts
+apps/api/test
+docs
+fonts

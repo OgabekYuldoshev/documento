@@ -130,6 +130,13 @@ pnpm 11 blocks dependency build scripts: allowed ones are listed under `allowBui
 - SSRF guard (`url-guard.ts`, `transport.ts`): http(s) only (https only in production), no credentials, no localhost/`.internal`, private/loopback/link-local ranges refused both on the literal host and on the DNS result at connect time. `WEBHOOK_ALLOW_PRIVATE=on` is for local dev only. Tests swap the network with `setWebhookTransport`.
 - Retention sweeps: audit rows older than `AUDIT_RETENTION_DAYS` (default 90) are deleted hourly (`startAuditCleaner`); finished webhook deliveries older than `WEBHOOK_LOG_RETENTION_DAYS` (default 30) hourly (pending ones are never pruned). Project delete removes the webhook and its log.
 
+## Deploy (Docker)
+
+- `docker-compose.yml` + `apps/api/Dockerfile` + `apps/web/Dockerfile` + `deploy/Caddyfile` + `.env.docker.example`; build context is the repo root, see README "Production (Docker)". Verified end to end (build, migrate + seed, SPA + deep links, `/api` and `/v1` proxy, sign-in cookie, Typst + fonts, volume persistence).
+- The API runs through `tsx` in production (workspace packages are source-exported TS): `tsx` is a runtime **dependency** of `apps/api`, keep it there. `docker-entrypoint.sh` = migrate, seed, start (all idempotent).
+- Web is built into the Caddy image; Caddy sets `X-Forwarded-For` (sign-in throttle + audit IP depend on it). `DOMAIN` drives both `WEB_ORIGIN` and `BETTER_AUTH_URL` (https). Local trial: `NODE_ENV=development SITE_ADDRESS=:80 HTTP_PORT=8088 DOMAIN=localhost` and send `Origin: https://localhost` with API calls; the production env checks reject localhost origins.
+- The machine used for development has only the standalone `docker-compose` (no `docker compose` plugin).
+
 ## API architecture (`apps/api/src`) - feature-based, layered
 
 ```
