@@ -1,5 +1,6 @@
 import { and, desc, eq, inArray, isNull, max } from "drizzle-orm";
 import { db, schema } from "../../db/client";
+import { visibleTo } from "../projects/access";
 
 const { template, templateVersion, project } = schema;
 
@@ -27,7 +28,7 @@ const first = <T>(rows: T[]) => rows[0] ?? null;
 
 export const templatesRepository = {
   /** Templates touched most recently (any version edited), across the actor's projects. */
-  recent(filter: { ownerId?: string }, limit: number) {
+  recent(filter: { userId?: string }, limit: number) {
     const touchedAt = max(templateVersion.updatedAt);
     return db
       .select({
@@ -44,7 +45,7 @@ export const templatesRepository = {
         and(
           isNull(template.archivedAt),
           isNull(project.archivedAt),
-          filter.ownerId ? eq(project.ownerId, filter.ownerId) : undefined,
+          filter.userId ? visibleTo(filter.userId) : undefined,
         ),
       )
       .groupBy(template.id)
@@ -142,8 +143,27 @@ export const templatesRepository = {
       .orderBy(desc(templateVersion.number));
   },
 
-  listVersionsFull(templateId: string) {
-    return db.select().from(templateVersion).where(eq(templateVersion.templateId, templateId));
+  async findVersionByNumber(templateId: string, number: number) {
+    return first(
+      await db
+        .select()
+        .from(templateVersion)
+        .where(and(eq(templateVersion.templateId, templateId), eq(templateVersion.number, number)))
+        .limit(1),
+    );
+  },
+
+  /** Current published version of many templates in one query (templateId -> version). */
+  async currentVersions(templateIds: string[]) {
+    const map = new Map<string, typeof templateVersion.$inferSelect>();
+    if (templateIds.length === 0) return map;
+    const rows = await db
+      .select({ templateId: template.id, version: templateVersion })
+      .from(template)
+      .innerJoin(templateVersion, eq(templateVersion.id, template.currentVersionId))
+      .where(inArray(template.id, templateIds));
+    for (const row of rows) map.set(row.templateId, row.version);
+    return map;
   },
 
   /** Version status summary for many templates (avoids N+1 on list). */
@@ -166,6 +186,20 @@ export const templatesRepository = {
     );
     if (!row) throw new Error("version update matched no row");
     return row;
+  },
+
+  /**
+   * Edits content of a version that is still a draft; returns null when it is no longer one
+   * (published/archived versions are immutable, also against a save racing a publish).
+   */
+  async updateDraft(id: string, patch: VersionPatch, x: Executor = db) {
+    return first(
+      await x
+        .update(templateVersion)
+        .set(patch)
+        .where(and(eq(templateVersion.id, id), eq(templateVersion.status, "draft")))
+        .returning(),
+    );
   },
 
   async nextNumber(templateId: string, x: Executor = db) {

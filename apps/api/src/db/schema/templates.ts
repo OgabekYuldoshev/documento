@@ -121,6 +121,8 @@ export const generation = sqliteTable(
     source: text("source", { enum: ["ui", "api"] }).notNull(),
     status: text("status", { enum: GENERATION_STATUSES }).notNull(),
     inputSha256: text("input_sha256").notNull(),
+    /** Times a worker claimed this job; a job that keeps killing workers is given up on. */
+    attempts: integer("attempts").notNull().default(0),
     errorJson: text("error_json", { mode: "json" }).$type<unknown>(),
     pdfKey: text("pdf_key"),
     bytes: integer("bytes"),

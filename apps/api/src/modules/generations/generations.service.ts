@@ -1,7 +1,9 @@
 import { createHash } from "node:crypto";
-import { isAdminRole, type TemplateSchema, templateSchemaSchema } from "@documento/shared";
+import { type TemplateSchema, templateSchemaSchema } from "@documento/shared";
 import { TRPCError } from "@trpc/server";
+import { env } from "../../config/env";
 import type { Generation, Project } from "../../db/schema";
+import { canonicalJson } from "../../lib/canonical-json";
 import { projectsService } from "../projects/projects.service";
 import { storage } from "../storage/storage";
 import { templatesRepository } from "../templates/templates.repository";
@@ -22,9 +24,28 @@ const notFound = (message: string) => new TRPCError({ code: "NOT_FOUND", message
 /** The pdf key is internal; clients use the download route. */
 export const toPublicGeneration = ({ pdfKey: _key, ...rest }: Generation) => rest;
 
-function sameRequest(prior: Generation, input: { templateId: string; data: unknown }) {
-  const sha = createHash("sha256").update(JSON.stringify(input.data)).digest("hex");
-  if (prior.templateId !== input.templateId || prior.inputSha256 !== sha) {
+const sha256 = (text: string) => createHash("sha256").update(text).digest("hex");
+
+/** Hash of the input; key order does not matter. */
+const hashOf = (data: unknown) => sha256(canonicalJson(data));
+
+/**
+ * The same key must come with the same request: template, data (key order ignored) and, when
+ * pinned, version. Rows written before canonical hashing used plain `JSON.stringify`: accepted too.
+ */
+async function sameRequest(
+  prior: Generation,
+  input: { templateId: string; data: unknown; versionNumber?: number },
+) {
+  const sameData =
+    prior.inputSha256 === hashOf(input.data) ||
+    prior.inputSha256 === sha256(JSON.stringify(input.data));
+  let sameVersion = true;
+  if (input.versionNumber !== undefined) {
+    const version = await templatesRepository.findVersion(prior.templateVersionId);
+    sameVersion = version?.number === input.versionNumber;
+  }
+  if (prior.templateId !== input.templateId || !sameData || !sameVersion) {
     throw new TRPCError({
       code: "CONFLICT",
       message: "Idempotency-Key boshqa so'rov bilan allaqachon ishlatilgan",
@@ -54,11 +75,11 @@ async function insertOrReplay(base: Base, rest: Rest): Promise<Generation> {
 export const generationsService = {
   /** Job counters across the actor's projects (running, failed and created in 24 h / 7 d). */
   activity: (actor: Actor) =>
-    repo.activity(isAdminRole(actor.role) ? {} : { ownerId: actor.id }, new Date()),
+    repo.activity(actor.role === "superadmin" ? {} : { userId: actor.id }, new Date()),
 
   /** Latest generations across the actor's projects, with template and project names. */
   recent: (actor: Actor, limit = 8) =>
-    repo.recentWithContext(isAdminRole(actor.role) ? {} : { ownerId: actor.id }, limit),
+    repo.recentWithContext(actor.role === "superadmin" ? {} : { userId: actor.id }, limit),
 
   async create(
     origin: Origin,
@@ -67,16 +88,24 @@ export const generationsService = {
   ) {
     if (origin.source === "api" && origin.idempotencyKey) {
       const prior = await repo.findByIdempotency(origin.apiKeyId, origin.idempotencyKey);
-      if (prior) return toPublicGeneration(sameRequest(prior, input));
+      if (prior) {
+        const expiresAt = prior.queuedAt.getTime() + env.IDEMPOTENCY_TTL_HOURS * 3_600_000;
+        // Past the window the key is free again; the old row stays as history without it.
+        if (expiresAt > Date.now()) return toPublicGeneration(await sameRequest(prior, input));
+        await repo.clearIdempotency(prior.id);
+      }
     }
     const template = await templatesRepository.findTemplate(input.templateId);
     if (!template || template.projectId !== project.id || template.archivedAt) {
       throw notFound("Shablon topilmadi");
     }
+    const pinned = input.versionNumber
+      ? await templatesRepository.findVersionByNumber(template.id, input.versionNumber)
+      : null;
     const version = input.versionNumber
-      ? (await templatesRepository.listVersionsFull(template.id)).find(
-          (v) => v.number === input.versionNumber && v.status !== "draft",
-        )
+      ? pinned?.status === "draft"
+        ? null // drafts are never rendered for real
+        : pinned
       : await templatesRepository.findCurrent(template.id);
     if (!version) {
       throw new TRPCError({
@@ -94,7 +123,7 @@ export const generationsService = {
       source: origin.source,
       apiKeyId: origin.source === "api" ? origin.apiKeyId : null,
       idempotencyKey: origin.source === "api" ? (origin.idempotencyKey ?? null) : null,
-      inputSha256: createHash("sha256").update(JSON.stringify(input.data)).digest("hex"),
+      inputSha256: hashOf(input.data),
       queuedAt: new Date(),
     };
 
@@ -117,6 +146,12 @@ export const generationsService = {
       return toPublicGeneration(row);
     }
 
+    if ((await repo.countPending(project.id)) >= env.PROJECT_MAX_PENDING) {
+      throw new TRPCError({
+        code: "TOO_MANY_REQUESTS",
+        message: "Project navbati to'lgan. Avvalgi hujjatlar tugashini kuting",
+      });
+    }
     await storage.put(jobKey(base.id), Buffer.from(JSON.stringify(checked.data)));
     const row = await insertOrReplay(base, { status: "queued" });
     if (row.id === base.id) kick();
@@ -155,12 +190,20 @@ export const generationsService = {
     let total = 0;
     for (;;) {
       const rows = await repo.expiredPdfs(now);
+      let cleaned = 0;
       for (const row of rows) {
-        if (row.pdfKey) await storage.remove(row.pdfKey);
-        await repo.update(row.id, { status: "expired", pdfKey: null });
+        // One bad file must not block the rest; the row stays `ok` and the next sweep retries it.
+        try {
+          if (row.pdfKey) await storage.remove(row.pdfKey);
+          await repo.update(row.id, { status: "expired", pdfKey: null });
+          cleaned++;
+        } catch (error) {
+          console.error("[retention] could not clean", row.id, error);
+        }
       }
-      total += rows.length;
-      if (rows.length < 500) return total;
+      total += cleaned;
+      // A full batch of failures would be fetched again forever: stop and wait for the next sweep.
+      if (rows.length < 500 || cleaned === 0) return total;
     }
   },
 };

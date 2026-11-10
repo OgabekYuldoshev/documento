@@ -1,14 +1,11 @@
-import {
-  type CreateProjectInput,
-  isAdminRole,
-  type Role,
-  type UpdateProjectInput,
-} from "@documento/shared";
+import type { CreateProjectInput, Role, UpdateProjectInput } from "@documento/shared";
 import { TRPCError } from "@trpc/server";
 import { env } from "../../config/env";
 import type { Project } from "../../db/schema";
 import { auditService } from "../audit/audit.service";
 import { storage } from "../storage/storage";
+import { usersRepository } from "../users/users.repository";
+import { membersRepository } from "./members.repository";
 import { projectsRepository } from "./projects.repository";
 import { slugify } from "./slug";
 
@@ -18,13 +15,24 @@ const MAX_SLUG_ATTEMPTS = 20;
 
 const notFound = () => new TRPCError({ code: "NOT_FOUND", message: "Project topilmadi" });
 
+const forbidden = () =>
+  new TRPCError({
+    code: "FORBIDDEN",
+    message: "Bu amalni faqat project egasi yoki superadmin bajara oladi",
+  });
+
 /**
- * The single ownership rule: owner, or admin/superadmin.
- * Foreign projects are reported as NOT_FOUND so ids do not leak existence.
+ * The single access rule. `manager` = owner or superadmin (members, ownership, archive, delete);
+ * `member` = added to the project (everything else). Admins have no special access: they are
+ * ordinary users here. Archived and foreign projects are NOT_FOUND so ids do not leak existence.
  */
-export function assertCanAccess(actor: Actor, project: Project): void {
-  if (project.archivedAt) throw notFound();
-  if (project.ownerId !== actor.id && !isAdminRole(actor.role)) throw notFound();
+export async function accessOf(
+  actor: Actor,
+  project: Project,
+): Promise<"manager" | "member" | null> {
+  if (project.archivedAt) return null;
+  if (actor.role === "superadmin" || project.ownerId === actor.id) return "manager";
+  return (await membersRepository.isMember(project.id, actor.id)) ? "member" : null;
 }
 
 function assertRetention(days: number | null) {
@@ -73,14 +81,48 @@ export const projectsService = {
   },
 
   list(actor: Actor): Promise<Project[]> {
-    return projectsRepository.list(isAdminRole(actor.role) ? {} : { ownerId: actor.id });
+    return projectsRepository.list(actor.role === "superadmin" ? {} : { userId: actor.id });
   },
 
+  /** Any access: owner, member or superadmin. */
   async get(actor: Actor, id: string): Promise<Project> {
     const project = await projectsRepository.findById(id);
-    if (!project) throw notFound();
-    assertCanAccess(actor, project);
+    if (!project || !(await accessOf(actor, project))) throw notFound();
     return project;
+  },
+
+  /** Owner or superadmin only; a plain member gets FORBIDDEN (they already know it exists). */
+  async getManaged(actor: Actor, id: string): Promise<Project> {
+    const project = await projectsRepository.findById(id);
+    const access = project ? await accessOf(actor, project) : null;
+    if (!project || !access) throw notFound();
+    if (access !== "manager") throw forbidden();
+    return project;
+  },
+
+  /** Hands the project to another active user; the previous owner stays on as a member. */
+  async transferOwner(actor: Actor, id: string, newOwnerId: string): Promise<void> {
+    const project = await projectsService.getManaged(actor, id);
+    if (newOwnerId === project.ownerId) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "Bu foydalanuvchi allaqachon egasi" });
+    }
+    const target = await usersRepository.findById(newOwnerId);
+    if (!target) throw new TRPCError({ code: "NOT_FOUND", message: "Foydalanuvchi topilmadi" });
+    if (target.banned) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Bloklangan foydalanuvchiga berib bo'lmaydi",
+      });
+    }
+    await membersRepository.transferOwner(id, project.ownerId, newOwnerId, actor.id);
+    await auditService.record({
+      action: "project.owner_changed",
+      actorId: actor.id,
+      targetType: "project",
+      targetId: id,
+      targetLabel: project.name,
+      detail: `Yangi ega: ${target.name} <${target.email}>`,
+    });
   },
 
   async update(actor: Actor, input: UpdateProjectInput): Promise<Project> {
@@ -104,7 +146,7 @@ export const projectsService = {
 
   /** Permanent removal: needs the exact project name, refuses while documents are rendering. */
   async remove(actor: Actor, id: string, confirmName: string): Promise<void> {
-    const project = await projectsService.get(actor, id);
+    const project = await projectsService.getManaged(actor, id);
     if (confirmName.trim() !== project.name) {
       throw new TRPCError({ code: "BAD_REQUEST", message: "Project nomi mos kelmadi" });
     }
@@ -127,7 +169,7 @@ export const projectsService = {
   },
 
   async archive(actor: Actor, id: string): Promise<void> {
-    const project = await projectsService.get(actor, id);
+    const project = await projectsService.getManaged(actor, id);
     await projectsRepository.archive(id, new Date());
     await auditService.record({
       action: "project.archived",

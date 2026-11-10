@@ -15,6 +15,9 @@ export const AUDIT_ACTIONS = {
   "project.updated": "Project yangilandi",
   "project.archived": "Project arxivlandi",
   "project.deleted": "Project o'chirildi",
+  "project.member_added": "Project'ga a'zo qo'shildi",
+  "project.member_removed": "Project'dan a'zo olindi",
+  "project.owner_changed": "Project egasi almashtirildi",
   "api_key.created": "API key yaratildi",
   "api_key.revoked": "API key bekor qilindi",
 } as const;

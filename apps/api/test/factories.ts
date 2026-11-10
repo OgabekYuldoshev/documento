@@ -11,13 +11,14 @@ export async function createUser(
 ) {
   const id = overrides.id ?? randomUUID();
   const role = overrides.role ?? "user";
+  const email = overrides.email ?? `${id}@test.local`;
   await db.insert(schema.user).values({
     id,
     name: overrides.name ?? `User ${id.slice(0, 6)}`,
-    email: overrides.email ?? `${id}@test.local`,
+    email,
     role,
   });
-  return { id, role };
+  return { id, role, email };
 }
 
 export function callerFor(actor: { id: string; role: Role }) {

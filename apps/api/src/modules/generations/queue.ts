@@ -14,6 +14,8 @@ export const jobKey = (id: string) => `jobs/${id}.json`;
 export const pdfKey = (id: string) => `pdf/${id}.pdf`;
 
 let inFlight = 0;
+/** Jobs this process is working on right now (the watchdog must not touch them). */
+const running = new Set<string>();
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -60,7 +62,13 @@ async function processJob(job: Generation): Promise<void> {
           : result.kind === "timeout"
             ? "timeout"
             : "render_error";
-      await finishedWith({ status, errorJson: result });
+      await finishedWith({
+        status,
+        errorJson: result,
+        ...("durationMs" in result && result.durationMs !== undefined
+          ? { durationMs: result.durationMs }
+          : {}),
+      });
       return;
     }
     try {
@@ -74,10 +82,12 @@ async function processJob(job: Generation): Promise<void> {
       pdfKey: pdfKey(job.id),
       bytes: result.bytes,
       pages: result.pages,
+      durationMs: result.durationMs,
       pdfExpiresAt: new Date(Date.now() + days * DAY_MS),
     });
   } catch (error) {
     console.error("[queue] job failed", job.id, error);
+    // If even this write fails the row stays `processing` and the watchdog recovers it.
     await finishedWith({
       status: "render_error",
       errorJson: {
@@ -85,9 +95,25 @@ async function processJob(job: Generation): Promise<void> {
         kind: "internal",
         diagnostics: [{ severity: "error", message: "Ichki xatolik" }],
       },
-    });
+    }).catch((e) => console.error("[queue] could not record failure", job.id, e));
   } finally {
-    await storage.remove(jobKey(job.id)); // input data must not outlive the job
+    await removeJobFile(job.id);
+  }
+}
+
+/** Input data must not outlive the job. */
+const removeJobFile = (id: string) =>
+  storage.remove(jobKey(id)).catch((e) => console.error("[queue] job file cleanup failed", id, e));
+
+/** Runs one job; never rejects, so a bad job cannot take the process down. */
+async function runJob(job: Generation): Promise<void> {
+  running.add(job.id);
+  try {
+    await processJob(job);
+  } catch (error) {
+    console.error("[queue] unexpected job error", job.id, error);
+  } finally {
+    running.delete(job.id);
   }
 }
 
@@ -105,7 +131,7 @@ export async function pump(): Promise<void> {
       inFlight--;
       return;
     }
-    void processJob(job).finally(() => {
+    void runJob(job).finally(() => {
       inFlight--;
       void pump();
     });
@@ -116,11 +142,28 @@ export const kick = () => {
   void pump();
 };
 
-/** Boot hook: requeue interrupted jobs and start draining. */
+async function recover(opts: { startedBefore?: Date; skip?: string[] }) {
+  const { requeued, abandoned } = await repo.recoverStalled({
+    maxAttempts: env.JOB_MAX_ATTEMPTS,
+    ...opts,
+  });
+  await Promise.all(abandoned.map(removeJobFile));
+  if (requeued.length > 0) console.log(`[queue] requeued ${requeued.length} stalled job(s)`);
+  if (abandoned.length > 0) console.warn(`[queue] gave up on ${abandoned.length} failing job(s)`);
+  if (requeued.length > 0) kick();
+  return requeued.length;
+}
+
+/** Boot hook: requeue interrupted jobs, start draining and watch for stuck ones. */
 export async function startQueue(): Promise<number> {
-  const recovered = await repo.requeueProcessing();
-  if (recovered > 0) console.log(`[queue] requeued ${recovered} interrupted job(s)`);
+  const recovered = await recover({});
   kick();
+  setInterval(() => {
+    const startedBefore = new Date(Date.now() - env.JOB_STALE_MINUTES * 60_000);
+    recover({ startedBefore, skip: [...running] }).catch((e) =>
+      console.error("[queue] watchdog failed", e),
+    );
+  }, 60_000).unref();
   return recovered;
 }
 

@@ -33,3 +33,21 @@ export const updateProjectSchema = z.object({
     .nullable(),
 });
 export type UpdateProjectInput = z.infer<typeof updateProjectSchema>;
+
+export const addProjectMemberSchema = z.object({
+  projectId: z.string().min(1),
+  email: z.string().trim().min(3, "Email kiriting").max(254),
+});
+export type AddProjectMemberInput = z.infer<typeof addProjectMemberSchema>;
+
+export const removeProjectMemberSchema = z.object({
+  projectId: z.string().min(1),
+  userId: z.string().min(1),
+});
+export type RemoveProjectMemberInput = z.infer<typeof removeProjectMemberSchema>;
+
+export const transferProjectOwnerSchema = z.object({
+  projectId: z.string().min(1),
+  newOwnerId: z.string().min(1),
+});
+export type TransferProjectOwnerInput = z.infer<typeof transferProjectOwnerSchema>;

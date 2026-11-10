@@ -1,7 +1,7 @@
 import { createProjectSchema, updateProjectSchema } from "@documento/shared";
 import { z } from "zod";
 import { protectedProcedure, router } from "../../trpc/init";
-import { projectProcedure } from "./project-procedure";
+import { managedProjectProcedure, projectProcedure } from "./project-procedure";
 import { projectsService } from "./projects.service";
 
 export const projectsRouter = router({
@@ -18,13 +18,20 @@ export const projectsRouter = router({
     .mutation(({ ctx, input }) => projectsService.update(ctx.actor, input)),
 
   /** Permanent delete; the client must send the exact project name. */
-  delete: projectProcedure
+  delete: managedProjectProcedure
     .input(z.object({ confirmName: z.string().min(1) }))
     .mutation(({ ctx, input }) =>
       projectsService.remove(ctx.actor, ctx.project.id, input.confirmName),
     ),
 
-  archive: projectProcedure.mutation(({ ctx }) =>
+  archive: managedProjectProcedure.mutation(({ ctx }) =>
     projectsService.archive(ctx.actor, ctx.project.id),
   ),
+
+  /** Owner or superadmin hands the project over; the previous owner stays on as a member. */
+  transferOwner: managedProjectProcedure
+    .input(z.object({ newOwnerId: z.string().min(1) }))
+    .mutation(({ ctx, input }) =>
+      projectsService.transferOwner(ctx.actor, ctx.project.id, input.newOwnerId),
+    ),
 });

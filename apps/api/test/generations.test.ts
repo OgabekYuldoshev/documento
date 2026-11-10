@@ -86,7 +86,7 @@ describe("generations", () => {
       queuedAt: new Date(),
       startedAt: new Date(),
     });
-    expect(await generationsRepository.requeueProcessing()).toBeGreaterThanOrEqual(1);
+    expect((await generationsRepository.recoverStalled({ maxAttempts: 3 })).requeued).toContain(id);
     expect((await generationsRepository.find(id))?.status).toBe("queued");
     expect((await generationsRepository.find(id))?.startedAt).toBeNull();
   });

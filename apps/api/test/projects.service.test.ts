@@ -17,27 +17,32 @@ describe("projectsService", () => {
     expect([p1.slug, p2.slug]).toEqual(["same-name", "same-name-2"]);
   });
 
-  it("scopes list by owner; admins see all", async () => {
+  it("scopes list by owner; only the superadmin sees all", async () => {
     const a = await createUser();
     const b = await createUser();
     const admin = await createUser({ role: "admin" });
+    const superadmin = await createUser({ role: "superadmin" });
     const pa = await projectsService.create(a, { name: "Alpha list" });
     const pb = await projectsService.create(b, { name: "Beta list" });
     const ids = (await projectsService.list(a)).map((p) => p.id);
     expect(ids).toContain(pa.id);
     expect(ids).not.toContain(pb.id);
+    const superIds = (await projectsService.list(superadmin)).map((p) => p.id);
+    expect(superIds).toEqual(expect.arrayContaining([pa.id, pb.id]));
     const adminIds = (await projectsService.list(admin)).map((p) => p.id);
-    expect(adminIds).toEqual(expect.arrayContaining([pa.id, pb.id]));
+    expect(adminIds).not.toContain(pa.id);
   });
 
-  it("hides foreign projects with NOT_FOUND, admin can read", async () => {
+  it("hides foreign projects with NOT_FOUND, superadmin can read", async () => {
     const a = await createUser();
     const b = await createUser();
     const admin = await createUser({ role: "admin" });
+    const superadmin = await createUser({ role: "superadmin" });
     const p = await projectsService.create(a, { name: "Private" });
     expect(await code(projectsService.get(b, p.id))).toBe("NOT_FOUND");
     expect(await code(projectsService.get(b, "missing"))).toBe("NOT_FOUND");
-    expect(await code(projectsService.get(admin, p.id))).toBe("OK");
+    expect(await code(projectsService.get(admin, p.id))).toBe("NOT_FOUND");
+    expect(await code(projectsService.get(superadmin, p.id))).toBe("OK");
   });
 
   it("archived projects vanish for everyone", async () => {

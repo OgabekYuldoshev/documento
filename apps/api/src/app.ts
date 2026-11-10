@@ -1,5 +1,6 @@
 import { trpcServer } from "@hono/trpc-server";
-import { Hono } from "hono";
+import { type Context, Hono } from "hono";
+import { bodyLimit } from "hono/body-limit";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { secureHeaders } from "hono/secure-headers";
@@ -26,6 +27,14 @@ app.use(
     allowHeaders: ["Content-Type", "Authorization"],
   }),
 );
+
+// Reject oversized bodies before anything parses them (tRPC and auth read whole JSON bodies).
+const tooLarge = (c: Context) => c.json({ message: "So'rov hajmi juda katta" }, 413);
+app.use(
+  "/api/trpc/*",
+  bodyLimit({ maxSize: env.TRPC_BODY_LIMIT_MB * 1024 * 1024, onError: tooLarge }),
+);
+app.use("/api/auth/*", bodyLimit({ maxSize: 1024 * 1024, onError: tooLarge }));
 
 app.get("/health", (c) => c.json({ ok: true }));
 

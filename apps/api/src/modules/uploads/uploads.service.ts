@@ -8,6 +8,7 @@ import { pipeline } from "node:stream/promises";
 import { collectImages, type TemplateSchema } from "@documento/shared";
 import { env } from "../../config/env";
 import type { Project } from "../../db/schema";
+import { createKeyedMutex } from "../../lib/keyed-mutex";
 import { AssetError, inspectContent } from "../assets/inspect";
 import { storage } from "../storage/storage";
 import { uploadsRepository as repo } from "./uploads.repository";
@@ -26,6 +27,8 @@ export class UploadError extends Error {
     super(message);
   }
 }
+
+const quotaLock = createKeyedMutex();
 
 export const uploadKey = (id: string) => `uploads/${id}`;
 
@@ -160,13 +163,6 @@ export const uploadsService = {
         createWriteStream(tmp),
       );
       if (size === 0) throw new UploadError(400, "empty_upload", "Fayl bo'sh");
-      if ((await repo.activeBytes(project.id)) + size > quota) {
-        throw new UploadError(
-          413,
-          "quota_exceeded",
-          "Project uchun vaqtinchalik fayllar kvotasi to'ldi",
-        );
-      }
 
       let info: ReturnType<typeof inspectContent>;
       try {
@@ -184,19 +180,34 @@ export const uploadsService = {
       }
 
       const id = `upl_${randomBytes(12).toString("hex")}`;
-      await storage.putFile(uploadKey(id), tmp);
-      const row = await repo.insert({
-        id,
-        projectId: project.id,
-        apiKeyId,
-        format: info.format as "png" | "jpeg" | "webp" | "svg",
-        mime: info.mime,
-        size: (await stat(tmp)).size,
-        sha256: hash.digest("hex"),
-        width: info.width ?? null,
-        height: info.height ?? null,
-        storageKey: uploadKey(id),
-        expiresAt: new Date(Date.now() + env.UPLOAD_TTL_MINUTES * 60_000),
+      // Check and insert are one step per project, so parallel uploads cannot overshoot the quota.
+      const row = await quotaLock.run(project.id, async () => {
+        if ((await repo.activeBytes(project.id)) + size > quota) {
+          throw new UploadError(
+            413,
+            "quota_exceeded",
+            "Project uchun vaqtinchalik fayllar kvotasi to'ldi",
+          );
+        }
+        await storage.putFile(uploadKey(id), tmp);
+        try {
+          return await repo.insert({
+            id,
+            projectId: project.id,
+            apiKeyId,
+            format: info.format as "png" | "jpeg" | "webp" | "svg",
+            mime: info.mime,
+            size: (await stat(tmp)).size,
+            sha256: hash.digest("hex"),
+            width: info.width ?? null,
+            height: info.height ?? null,
+            storageKey: uploadKey(id),
+            expiresAt: new Date(Date.now() + env.UPLOAD_TTL_MINUTES * 60_000),
+          });
+        } catch (error) {
+          await storage.remove(uploadKey(id));
+          throw error;
+        }
       });
       return {
         uploadId: row.id,
@@ -220,11 +231,18 @@ export const uploadsService = {
   /** Deletes expired uploads (files + rows). Returns how many were removed. */
   async cleanExpired(now = new Date()): Promise<number> {
     const rows = await repo.expired(now);
+    let removed = 0;
     for (const row of rows) {
-      await storage.remove(row.storageKey);
-      await repo.remove(row.id);
+      // One bad file must not block the rest; the row stays and is retried by the next sweep.
+      try {
+        await storage.remove(row.storageKey);
+        await repo.remove(row.id);
+        removed++;
+      } catch (error) {
+        console.error("[uploads] could not remove", row.id, error);
+      }
     }
-    return rows.length;
+    return removed;
   },
 };
 

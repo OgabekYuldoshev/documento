@@ -5,11 +5,13 @@ import { bodyLimit } from "hono/body-limit";
 import { env } from "../../config/env";
 import type { ApiKey, Generation, Project } from "../../db/schema";
 import { apiKeysService } from "../api-keys/api-keys.service";
+import { clientIp } from "../auth/auth.guard";
 import { generationsRepository } from "../generations/generations.repository";
 import { generationsService } from "../generations/generations.service";
 import { pdfAvailability, streamPdf } from "../generations/pdf-response";
 import { templatesRepository } from "../templates/templates.repository";
 import { UploadError, uploadsService } from "../uploads/uploads.service";
+import { authThrottle } from "./auth-throttle";
 import { buildOpenApi } from "./openapi";
 import { problem } from "./problem";
 import { rateLimiter } from "./rate-limit";
@@ -28,8 +30,22 @@ function extractKey(headers: Headers): string | null {
 
 // Authentication + rate limit for everything under /v1.
 v1.use("*", async (c, next) => {
+  const ip = clientIp(c.req.raw.headers);
+  const blocked = authThrottle.check(ip);
+  if (blocked.blocked) {
+    return problem(
+      c,
+      429,
+      "rate_limited",
+      "Juda ko'p noto'g'ri API key. Birozdan keyin qayta urinib ko'ring",
+      {},
+      { "Retry-After": String(blocked.retryAfterSec) },
+    );
+  }
   const auth = await apiKeysService.authenticate(extractKey(c.req.raw.headers));
   if (!auth.ok) {
+    // A missing key is a client mistake, not guessing: only wrong keys count.
+    if (auth.reason !== "missing") authThrottle.fail(ip);
     return problem(
       c,
       401,
@@ -73,15 +89,21 @@ async function visibleTemplates(key: ApiKey, projectId: string) {
   return all.filter((t) => apiKeysService.canUseTemplate(key, t.id));
 }
 
-async function templateView(t: Awaited<ReturnType<typeof visibleTemplates>>[number]) {
-  const current = await currentSchema(t.currentVersionId);
-  return {
-    slug: t.slug,
-    name: t.name,
-    description: t.description,
-    version: current?.version.number ?? null,
-    schema: current ? current.schema : null,
-  };
+type TemplateRow = Awaited<ReturnType<typeof visibleTemplates>>[number];
+
+/** Public shape of templates; current versions are loaded in one query, not one per template. */
+async function templateViews(templates: TemplateRow[]) {
+  const versions = await templatesRepository.currentVersions(templates.map((t) => t.id));
+  return templates.map((t) => {
+    const version = versions.get(t.id);
+    return {
+      slug: t.slug,
+      name: t.name,
+      description: t.description,
+      version: version?.number ?? null,
+      schema: version ? (templateSchemaSchema.parse(version.schema) as TemplateSchema) : null,
+    };
+  });
 }
 
 const failedStatuses = new Set(["validation_error", "render_error", "timeout"]);
@@ -112,7 +134,7 @@ function documentView(row: Generation) {
 
 v1.get("/templates", async (c) => {
   const templates = await visibleTemplates(c.get("key"), c.get("project").id);
-  return c.json({ data: await Promise.all(templates.map(templateView)) });
+  return c.json({ data: await templateViews(templates) });
 });
 
 v1.get("/templates/:slug", async (c) => {
@@ -121,7 +143,7 @@ v1.get("/templates/:slug", async (c) => {
   if (!apiKeysService.canUseTemplate(c.get("key"), template.id)) {
     return problem(c, 403, "forbidden", "Bu key ushbu shablonga ruxsat bermaydi");
   }
-  return c.json(await templateView(template));
+  return c.json((await templateViews([template]))[0]);
 });
 
 v1.post(
@@ -187,6 +209,9 @@ v1.post(
       );
     } catch (error) {
       if (error instanceof TRPCError) {
+        if (error.code === "TOO_MANY_REQUESTS") {
+          return problem(c, 429, "queue_full", error.message, {}, { "Retry-After": "5" });
+        }
         const status = error.code === "CONFLICT" ? 409 : error.code === "NOT_FOUND" ? 404 : 400;
         return problem(c, status, error.code.toLowerCase(), error.message);
       }
@@ -194,9 +219,12 @@ v1.post(
     }
 
     const location = { Location: `/v1/documents/${created.id}` };
-    if (/respond-async/i.test(c.req.header("prefer") ?? "")) {
+    const wantsAsync = /respond-async/i.test(c.req.header("prefer") ?? "");
+    const pending = created.status === "queued" || created.status === "processing";
+    if (wantsAsync && pending) {
       return c.json({ id: created.id, status: "processing" }, 202, location);
     }
+    // Already finished (invalid data, or an idempotent replay): say so instead of a stale 202.
     const row =
       (await generationsService.waitFor(created.id, env.SYNC_WAIT_MS)) ??
       (await generationsRepository.find(created.id));
@@ -221,7 +249,7 @@ v1.post(
         details: row.errorJson,
       });
     }
-    if (c.req.query("response") === "json") {
+    if (wantsAsync || c.req.query("response") === "json") {
       return c.json({ ...documentView(row), status: "ok" }, 200, location);
     }
     return streamPdf(row, "attachment");
@@ -283,6 +311,6 @@ v1.get("/documents/:id/file", async (c) => {
 
 v1.get("/openapi.json", async (c) => {
   const templates = await visibleTemplates(c.get("key"), c.get("project").id);
-  const views = await Promise.all(templates.map(templateView));
+  const views = await templateViews(templates);
   return c.json(buildOpenApi(c.get("project").name, views));
 });

@@ -4,6 +4,7 @@ import { auditRouter } from "./modules/audit/audit.router";
 import { authRouter } from "./modules/auth/auth.router";
 import { dashboardRouter } from "./modules/dashboard/dashboard.router";
 import { generationsRouter } from "./modules/generations/generations.router";
+import { projectMembersRouter } from "./modules/projects/members.router";
 import { projectsRouter } from "./modules/projects/projects.router";
 import { templatesRouter } from "./modules/templates/templates.router";
 import { usersRouter } from "./modules/users/users.router";
@@ -14,6 +15,7 @@ export const appRouter = router({
   users: usersRouter,
   dashboard: dashboardRouter,
   projects: projectsRouter,
+  projectMembers: projectMembersRouter,
   templates: templatesRouter,
   templateAssets: templateAssetsRouter,
   generations: generationsRouter,

@@ -12,3 +12,11 @@ export const projectProcedure = protectedProcedure
     const project = await projectsService.get(ctx.actor, input.projectId);
     return next({ ctx: { project } });
   });
+
+/** Like `projectProcedure`, but only the owner or the superadmin gets through (members: FORBIDDEN). */
+export const managedProjectProcedure = protectedProcedure
+  .input(projectIdSchema)
+  .use(async ({ ctx, input, next }) => {
+    const project = await projectsService.getManaged(ctx.actor, input.projectId);
+    return next({ ctx: { project } });
+  });

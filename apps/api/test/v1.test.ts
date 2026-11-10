@@ -157,6 +157,37 @@ describe("/v1 generate validation", () => {
     expect(JSON.stringify(row)).not.toContain("SECRETVALUE");
   });
 
+  it("answers 429 queue_full when the project already has too many pending jobs", async () => {
+    const { project, invoice, secret } = await setup();
+    const [version] = await db
+      .select()
+      .from(schema.templateVersion)
+      .where(eq(schema.templateVersion.templateId, invoice.templateId));
+    if (!version) throw new Error("no version");
+    await db.insert(schema.generation).values({
+      id: crypto.randomUUID(),
+      projectId: project.id,
+      templateId: invoice.templateId,
+      templateVersionId: version.id,
+      source: "ui",
+      status: "processing",
+      inputSha256: "x",
+      queuedAt: new Date(),
+      startedAt: new Date(),
+    });
+    const before = env.PROJECT_MAX_PENDING;
+    env.PROJECT_MAX_PENDING = 1;
+    try {
+      const res = await post(secret, invoice.slug, { data: { name: "Ali" } });
+      expect(res.status).toBe(429);
+      expect(res.headers.get("Retry-After")).toBe("5");
+      expect(res.headers.get("content-type")).toContain("application/problem+json");
+      expect(await res.json()).toMatchObject({ type: "queue_full", status: 429 });
+    } finally {
+      env.PROJECT_MAX_PENDING = before;
+    }
+  });
+
   it("answers 404 for another key's documents", async () => {
     const a = await setup();
     const b = await setup();
@@ -221,6 +252,18 @@ describe.skipIf(!hasTypst)("/v1 generate with Typst", () => {
       headers: { Authorization: `Bearer ${secret}` },
     });
     expect(file.status).toBe(200);
+  });
+
+  it("answers invalid data at once in async mode instead of a misleading 202", async () => {
+    const { secret, invoice } = await setup();
+    const res = await post(
+      secret,
+      invoice.slug,
+      { data: { age: -1 } },
+      { Prefer: "respond-async" },
+    );
+    expect(res.status).toBe(422);
+    expect(await res.json()).toMatchObject({ type: "validation_error" });
   });
 
   it("replays idempotent requests and rejects key reuse with other data", async () => {

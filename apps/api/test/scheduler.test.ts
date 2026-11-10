@@ -65,4 +65,28 @@ describe("scheduler", () => {
     await small;
     await expect(big).resolves.toBe("big");
   });
+
+  it("serves production work before interactive work that queued earlier", async () => {
+    const s = createScheduler(1000);
+    const order: string[] = [];
+    const hold = gate();
+    const job = (name: string, priority?: "production" | "interactive") =>
+      s.run(
+        1000,
+        async () => {
+          order.push(name);
+          if (name === "first") await hold.promise;
+        },
+        priority,
+      );
+    const first = job("first");
+    await tick();
+    const preview1 = job("preview1", "interactive");
+    const preview2 = job("preview2", "interactive");
+    const production = job("production", "production");
+    expect(s.stats.queued).toBe(3);
+    hold.open();
+    await Promise.all([first, preview1, preview2, production]);
+    expect(order).toEqual(["first", "production", "preview1", "preview2"]); // FIFO inside a tier
+  });
 });

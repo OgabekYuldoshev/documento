@@ -4,7 +4,7 @@ import {
   DEFAULT_TEMPLATE_JSON_SCHEMA,
   DEFAULT_TEMPLATE_SOURCE,
   diffSchemas,
-  isAdminRole,
+  type Role,
   type SaveDraftInput,
   sampleFromSchema,
   TEMPLATE_SOURCE_MAX_BYTES,
@@ -20,7 +20,7 @@ import { runPublishDryRun } from "../render/render.service";
 import { templatesRepository as repo } from "./templates.repository";
 import { assertSchemaCompiles, SchemaDefinitionError, validateData } from "./validate-data";
 
-type Actor = { id: string; role: Parameters<typeof isAdminRole>[0] };
+type Actor = { id: string; role: Role };
 
 const MAX_SLUG_ATTEMPTS = 20;
 
@@ -61,6 +61,12 @@ const checksumOf = (v: TemplateVersion) =>
     .update(JSON.stringify([v.source, v.schema, v.renderTimeoutSec, v.maxPayloadKb]))
     .digest("hex");
 
+/** Everything a publish validates (dry-run uses the sample too), so edits during it are caught. */
+const contentHashOf = (v: TemplateVersion) =>
+  createHash("sha256")
+    .update(JSON.stringify([v.source, v.schema, v.sampleData, v.renderTimeoutSec, v.maxPayloadKb]))
+    .digest("hex");
+
 function describeErrors(errors: { path: string; message: string }[]) {
   return errors
     .slice(0, 3)
@@ -71,7 +77,7 @@ function describeErrors(errors: { path: string; message: string }[]) {
 export const templatesService = {
   /** Most recently edited templates of the projects the actor can access (sidebar shortcut). */
   recent: (actor: Actor, limit = 3) =>
-    repo.recent(isAdminRole(actor.role) ? {} : { ownerId: actor.id }, limit),
+    repo.recent(actor.role === "superadmin" ? {} : { userId: actor.id }, limit),
 
   async list(project: Project) {
     const templates = await repo.listByProject(project.id);
@@ -167,13 +173,15 @@ export const templatesService = {
     }
     assertSchemaDefinition(input.schema);
     // Sample data is only enforced at publish time, so the builder can be edited freely.
-    return repo.updateVersion(draft.id, {
+    const saved = await repo.updateDraft(draft.id, {
       source: input.source,
       schema: input.schema,
       sampleData: input.sampleData,
       renderTimeoutSec: input.renderTimeoutSec,
       maxPayloadKb: input.maxPayloadKb,
     });
+    if (!saved) throw noDraft(); // published while we were saving
+    return saved;
   },
 
   async publish(
@@ -207,8 +215,18 @@ export const templatesService = {
     await publishChecks(draft);
 
     const version = await db.transaction(async (tx) => {
+      // The dry-run can take a while: publish only what was actually validated.
+      const fresh = await repo.findDraft(template.id, tx);
+      if (!fresh || fresh.id !== draft.id || contentHashOf(fresh) !== contentHashOf(draft)) {
+        throw err("CONFLICT", "Qoralama tekshiruv paytida o'zgardi. Qayta publish qiling");
+      }
+      // Compare against the current version again: another publish may have won meanwhile.
+      const now = await repo.findCurrent(template.id, tx);
+      if (now?.id !== current?.id) {
+        throw err("CONFLICT", "Shablon boshqa publish bilan o'zgardi. Qayta urinib ko'ring");
+      }
       if (current) await repo.updateVersion(current.id, { status: "archived" }, tx);
-      const published = await repo.updateVersion(
+      const published = await repo.updateDraft(
         draft.id,
         {
           status: "published",
@@ -218,6 +236,7 @@ export const templatesService = {
         },
         tx,
       );
+      if (!published) throw noDraft();
       await repo.setCurrent(template.id, published.id, tx);
       return published;
     });
@@ -241,7 +260,9 @@ export const templatesService = {
     const draft = await repo.findDraft(template.id);
     if (draft) {
       if (draft.id === source.id) return draft;
-      return repo.updateVersion(draft.id, content);
+      const restored = await repo.updateDraft(draft.id, content);
+      if (!restored) throw noDraft();
+      return restored;
     }
     return repo.insertVersion({
       id: crypto.randomUUID(),

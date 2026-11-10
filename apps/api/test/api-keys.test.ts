@@ -1,3 +1,4 @@
+import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { db, schema } from "../src/db/client";
 import { apiKeysService } from "../src/modules/api-keys/api-keys.service";
@@ -89,6 +90,21 @@ describe("apiKeys", () => {
     const { secret } = await owner.apiKeys.create({ projectId, name: "Key one", scope: "project" });
     await owner.projects.archive({ projectId });
     expect(await apiKeysService.authenticate(secret)).toEqual({ ok: false, reason: "invalid" });
+  });
+
+  it("rejects a key whose owner was banned, and accepts it again after unban", async () => {
+    const { owner, projectId } = await setup();
+    const ownerId = (await db.select().from(schema.project))
+      .filter((p) => p.id === projectId)
+      .map((p) => p.ownerId)[0] as string;
+    const { secret } = await owner.apiKeys.create({ projectId, name: "Key one", scope: "project" });
+    expect((await apiKeysService.authenticate(secret)).ok).toBe(true);
+
+    await db.update(schema.user).set({ banned: true }).where(eq(schema.user.id, ownerId));
+    expect(await apiKeysService.authenticate(secret)).toEqual({ ok: false, reason: "invalid" });
+
+    await db.update(schema.user).set({ banned: false }).where(eq(schema.user.id, ownerId));
+    expect((await apiKeysService.authenticate(secret)).ok).toBe(true);
   });
 
   it("validates template scope", async () => {

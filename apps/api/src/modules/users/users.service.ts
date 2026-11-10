@@ -138,7 +138,7 @@ export const usersService = {
       throw new TRPCError({
         code: "CONFLICT",
         message:
-          "Foydalanuvchining project'lari bor. Avval ularni arxivlang yoki egasini almashtiring",
+          "Foydalanuvchining project'lari bor. Avval ularning egasini almashtiring yoki o'chiring",
       });
     }
     try {

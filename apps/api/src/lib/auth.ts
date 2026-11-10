@@ -21,7 +21,7 @@ export const auth = betterAuth({
   session: {
     expiresIn: 60 * 60 * 24 * 7,
     updateAge: 60 * 60 * 24,
-    cookieCache: { enabled: true, maxAge: 5 * 60 },
+    // No cookie cache: a ban, demotion or password reset must apply on the very next request.
   },
   advanced: {
     useSecureCookies: isProd,

@@ -30,14 +30,18 @@ describe("projects router", () => {
     expect((await fail(b.projects.archive({ projectId: p.id })))?.code).toBe("NOT_FOUND");
   });
 
-  it("admin lists everyone's projects", async () => {
+  it("superadmin lists everyone's projects, admin only its own", async () => {
     const a = callerFor(await createUser());
     const b = callerFor(await createUser());
     const admin = callerFor(await createUser({ role: "admin" }));
+    const superadmin = callerFor(await createUser({ role: "superadmin" }));
     const pa = await a.projects.create({ name: "Router three" });
     const pb = await b.projects.create({ name: "Router four" });
-    const ids = (await admin.projects.list()).map((p) => p.id);
-    expect(ids).toEqual(expect.arrayContaining([pa.id, pb.id]));
+    const all = (await superadmin.projects.list()).map((p) => p.id);
+    expect(all).toEqual(expect.arrayContaining([pa.id, pb.id]));
+    const adminIds = (await admin.projects.list()).map((p) => p.id);
+    expect(adminIds).not.toContain(pa.id);
+    expect(adminIds).not.toContain(pb.id);
   });
 
   it("rejects anonymous callers", async () => {

@@ -5,6 +5,7 @@ import type { ApiKey, Project } from "../../db/schema";
 import { auditService } from "../audit/audit.service";
 import { projectsRepository } from "../projects/projects.repository";
 import { templatesRepository } from "../templates/templates.repository";
+import { usersRepository } from "../users/users.repository";
 import { apiKeysRepository as repo } from "./api-keys.repository";
 import { generateKey, hashMatches, parseKeyPrefix } from "./key-format";
 
@@ -85,6 +86,9 @@ export const apiKeysService = {
     }
     const project = await projectsRepository.findById(key.projectId);
     if (!project || project.archivedAt) return { ok: false, reason: "invalid" };
+    // A blocked (or removed) owner must not keep integrations alive through old keys.
+    const owner = await usersRepository.findById(project.ownerId);
+    if (!owner || owner.banned) return { ok: false, reason: "invalid" };
     if (!key.lastUsedAt || Date.now() - key.lastUsedAt.getTime() > TOUCH_INTERVAL_MS) {
       await repo.touch(key.id, new Date());
     }

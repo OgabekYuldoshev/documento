@@ -1,7 +1,17 @@
 import { and, desc, eq, inArray, isNull } from "drizzle-orm";
 import { db, schema } from "../../db/client";
+import { visibleTo } from "./access";
 
-const { project, template, templateVersion, templateAsset, generation, apiKey, upload } = schema;
+const {
+  project,
+  projectMember,
+  template,
+  templateVersion,
+  templateAsset,
+  generation,
+  apiKey,
+  upload,
+} = schema;
 
 export type NewProject = typeof project.$inferInsert;
 export type ProjectPatch = Partial<Pick<NewProject, "name" | "description" | "retentionDays">>;
@@ -18,10 +28,10 @@ export const projectsRepository = {
     return row ?? null;
   },
 
-  /** Active (non-archived) projects, newest first. */
-  list(filter: { ownerId?: string } = {}) {
-    const where = filter.ownerId
-      ? and(isNull(project.archivedAt), eq(project.ownerId, filter.ownerId))
+  /** Active (non-archived) projects, newest first; `userId` = owned or joined by that user. */
+  list(filter: { userId?: string } = {}) {
+    const where = filter.userId
+      ? and(isNull(project.archivedAt), visibleTo(filter.userId))
       : isNull(project.archivedAt);
     return db.select().from(project).where(where).orderBy(desc(project.createdAt));
   },
@@ -70,6 +80,7 @@ export const projectsRepository = {
 
       await tx.delete(generation).where(eq(generation.projectId, id));
       await tx.delete(upload).where(eq(upload.projectId, id));
+      await tx.delete(projectMember).where(eq(projectMember.projectId, id));
       await tx.delete(apiKey).where(eq(apiKey.projectId, id));
       if (templateIds.length) {
         await tx.delete(templateAsset).where(inArray(templateAsset.templateId, templateIds));

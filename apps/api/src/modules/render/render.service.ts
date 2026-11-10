@@ -7,7 +7,7 @@ import { PREVIEW_MAX_TOTAL_BYTES, previewsService } from "../previews/previews.s
 import { type DataError, validateData } from "../templates/validate-data";
 import { PLACEHOLDER_NAME, PLACEHOLDER_PNG } from "../uploads/placeholder";
 import type { Diagnostic } from "./diagnostics";
-import { createScheduler } from "./scheduler";
+import { createScheduler, type RenderPriority } from "./scheduler";
 import { runTypst } from "./typst-runner";
 
 export const DEFAULT_RENDER_MEMORY_MB = 1024;
@@ -23,6 +23,8 @@ export type RenderInput = {
   memoryMb?: number;
   strictWarnings?: boolean;
   format?: "pdf" | "svg";
+  /** Defaults to `production`; editor previews run as `interactive` and never delay documents. */
+  priority?: RenderPriority;
   maxPayloadBytes?: number;
   assets?: Parameters<typeof runTypst>[0]["assets"];
   /**
@@ -38,6 +40,8 @@ export type RenderFailure =
       ok: false;
       kind: "compile" | "timeout" | "oom" | "too_large";
       diagnostics: Diagnostic[];
+      /** Time the render itself took (not the time spent waiting for the scheduler). */
+      durationMs?: number;
     };
 
 export type PreviewResult =
@@ -94,17 +98,20 @@ export async function renderToFile(input: RenderInput): Promise<FileResult> {
   const memoryMb = input.memoryMb ?? DEFAULT_RENDER_MEMORY_MB;
   let result: Awaited<ReturnType<typeof runTypst>>;
   try {
-    result = await scheduler.run(memoryMb, () =>
-      runTypst({
-        source: input.source,
-        data,
-        extraFiles,
-        timeoutSec: input.timeoutSec,
-        memoryMb,
-        strictWarnings: input.strictWarnings,
-        format: input.format,
-        assets: input.assets,
-      }),
+    result = await scheduler.run(
+      memoryMb,
+      () =>
+        runTypst({
+          source: input.source,
+          data,
+          extraFiles,
+          timeoutSec: input.timeoutSec,
+          memoryMb,
+          strictWarnings: input.strictWarnings,
+          format: input.format,
+          assets: input.assets,
+        }),
+      input.priority,
     );
   } catch (error) {
     if (error instanceof Error && error.message === "render_too_large") {
@@ -116,7 +123,7 @@ export async function renderToFile(input: RenderInput): Promise<FileResult> {
   if (result.status !== "ok") {
     await result.dispose();
     const kind = result.status === "error" ? "compile" : result.status;
-    return { ok: false, kind, diagnostics: result.diagnostics };
+    return { ok: false, kind, diagnostics: result.diagnostics, durationMs: result.durationMs };
   }
   return {
     ok: true,
@@ -131,7 +138,7 @@ export async function renderToFile(input: RenderInput): Promise<FileResult> {
 
 /** Small-PDF variant for the editor preview: returns the bytes and cleans up. */
 export async function renderPreview(input: RenderInput): Promise<PreviewResult> {
-  const result = await renderToFile(input);
+  const result = await renderToFile({ ...input, priority: "interactive" });
   if (!result.ok) return result;
   try {
     if (result.bytes > PREVIEW_MAX_BYTES) {
@@ -161,7 +168,7 @@ export async function renderPreviewSvg(
   userId: string,
   input: RenderInput,
 ): Promise<SvgPreviewResult> {
-  const result = await renderToFile({ ...input, format: "svg" });
+  const result = await renderToFile({ ...input, format: "svg", priority: "interactive" });
   if (!result.ok) return result;
   try {
     if (result.bytes > PREVIEW_MAX_TOTAL_BYTES) {

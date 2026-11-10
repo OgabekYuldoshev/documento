@@ -22,6 +22,15 @@ export const usersRepository = {
     return row ?? null;
   },
 
+  findByEmail: async (email: string) => {
+    const [row] = await db
+      .select(columns)
+      .from(user)
+      .where(sql`lower(${user.email}) = ${email.trim().toLowerCase()}`)
+      .limit(1);
+    return row ?? null;
+  },
+
   /** Counts all projects owned by a user, archived included (FK is restrict). */
   countOwnedProjects: async (id: string) => {
     const [row] = await db.select({ n: count() }).from(project).where(eq(project.ownerId, id));
