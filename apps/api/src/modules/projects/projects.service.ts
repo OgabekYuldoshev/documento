@@ -7,6 +7,7 @@ import {
 import { TRPCError } from "@trpc/server";
 import { env } from "../../config/env";
 import type { Project } from "../../db/schema";
+import { storage } from "../storage/storage";
 import { projectsRepository } from "./projects.repository";
 import { slugify } from "./slug";
 
@@ -83,6 +84,23 @@ export const projectsService = {
     });
     if (!updated) throw notFound();
     return updated;
+  },
+
+  /** Permanent removal: needs the exact project name, refuses while documents are rendering. */
+  async remove(actor: Actor, id: string, confirmName: string): Promise<void> {
+    const project = await projectsService.get(actor, id);
+    if (confirmName.trim() !== project.name) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "Project nomi mos kelmadi" });
+    }
+    if (await projectsRepository.activeJobs(id)) {
+      throw new TRPCError({
+        code: "CONFLICT",
+        message: "Hujjatlar yaratilmoqda. Tugashini kuting va qayta urining",
+      });
+    }
+    const keys = await projectsRepository.deleteCascade(id);
+    // Files go after the DB commit: a failed removal leaves an orphan file, never a broken row.
+    await Promise.all(keys.map((key) => storage.remove(key).catch(() => undefined)));
   },
 
   async archive(actor: Actor, id: string): Promise<void> {

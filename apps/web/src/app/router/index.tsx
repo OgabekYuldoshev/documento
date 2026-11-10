@@ -2,6 +2,7 @@ import { createBrowserRouter, RouterProvider } from "react-router";
 import { DashboardPage } from "@/pages/dashboard";
 import { LoginPage } from "@/pages/login";
 import { NotFoundPage } from "@/pages/not-found";
+import { ProfilePage } from "@/pages/profile";
 import { ProjectPage } from "@/pages/project";
 import { ProjectsPage } from "@/pages/projects";
 import { TemplatePage } from "@/pages/template";
@@ -18,6 +19,7 @@ const router = createBrowserRouter([
     children: [
       { path: ROUTES.dashboard, element: <DashboardPage /> },
       { path: ROUTES.users, loader: requireAdmin, element: <UsersPage /> },
+      { path: ROUTES.profile, element: <ProfilePage /> },
       { path: ROUTES.projects, element: <ProjectsPage /> },
       { path: ROUTES.project(":projectId"), element: <ProjectPage /> },
       { path: ROUTES.template(":projectId", ":templateId"), element: <TemplatePage /> },

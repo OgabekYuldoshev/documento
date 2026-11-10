@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { DEFAULT_SECTION, PROJECT_SECTIONS, parseSection } from "@/entities/project";
 import { ArchiveProjectButton } from "@/features/projects/archive-project";
+import { DeleteProjectButton } from "@/features/projects/delete-project";
 import { ProjectSettingsForm } from "@/features/projects/update-project";
 import { trpc } from "@/shared/api";
 import { ROUTES } from "@/shared/config";
@@ -78,29 +79,45 @@ export function ProjectPage() {
               title="Xavfli hudud"
               description="Qaytarib bo'lmaydigan yoki ehtiyotkorlik talab qiladigan amallar."
             >
-              <Group justify="space-between" wrap="wrap" align="center" gap="md">
-                <div>
-                  <Text fw={500}>Projectni arxivlash</Text>
-                  <Text size="sm" c="dimmed">
-                    Project ro'yxatdan yo'qoladi, shablonlari va API keylari ishlamay qoladi.
-                  </Text>
-                </div>
-                <ArchiveProjectButton
-                  id={project.id}
-                  name={project.name}
-                  onArchived={() => navigate(ROUTES.projects)}
-                  renderTrigger={(open) => (
-                    <Button
-                      color="red"
-                      variant="light"
-                      leftSection={<IconArchive size={16} />}
-                      onClick={open}
-                    >
-                      Arxivlash
-                    </Button>
-                  )}
-                />
-              </Group>
+              <Stack gap="lg">
+                <Group justify="space-between" wrap="wrap" align="center" gap="md">
+                  <div>
+                    <Text fw={500}>Projectni arxivlash</Text>
+                    <Text size="sm" c="dimmed">
+                      Project ro'yxatdan yo'qoladi, shablonlari va API keylari ishlamay qoladi.
+                    </Text>
+                  </div>
+                  <ArchiveProjectButton
+                    id={project.id}
+                    name={project.name}
+                    onArchived={() => navigate(ROUTES.projects)}
+                    renderTrigger={(open) => (
+                      <Button
+                        color="red"
+                        variant="light"
+                        leftSection={<IconArchive size={16} />}
+                        onClick={open}
+                      >
+                        Arxivlash
+                      </Button>
+                    )}
+                  />
+                </Group>
+                <Group justify="space-between" wrap="wrap" align="center" gap="md">
+                  <div>
+                    <Text fw={500}>Projectni butunlay o'chirish</Text>
+                    <Text size="sm" c="dimmed">
+                      Shablonlar, API keylar, hujjatlar va fayllar bilan birga qaytarib bo'lmaydigan
+                      qilib o'chadi.
+                    </Text>
+                  </div>
+                  <DeleteProjectButton
+                    id={project.id}
+                    name={project.name}
+                    onDeleted={() => navigate(ROUTES.projects)}
+                  />
+                </Group>
+              </Stack>
             </SettingsSection>
           </Stack>
         </Tabs.Panel>

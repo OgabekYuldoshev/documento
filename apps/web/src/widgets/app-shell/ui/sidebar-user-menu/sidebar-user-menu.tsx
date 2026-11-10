@@ -1,9 +1,11 @@
 import { getRoleLabel } from "@documento/shared";
 import { Avatar, Menu, Stack, Text, UnstyledButton } from "@mantine/core";
-import { IconSelector } from "@tabler/icons-react";
+import { IconKey, IconSelector, IconUser } from "@tabler/icons-react";
+import { Link } from "react-router";
 import { useSession } from "@/entities/session";
 import { UserRoleBadge } from "@/entities/user";
 import { LogoutMenuItem } from "@/features/auth/logout";
+import { ROUTES } from "@/shared/config";
 import { getInitials } from "@/shared/lib";
 import classes from "./sidebar-user-menu.module.scss";
 
@@ -39,6 +41,17 @@ export function SidebarUserMenu() {
           </Text>
           <UserRoleBadge role={user.role} />
         </Stack>
+        <Menu.Divider />
+        <Menu.Item component={Link} to={ROUTES.profile} leftSection={<IconUser size={16} />}>
+          Profil
+        </Menu.Item>
+        <Menu.Item
+          component={Link}
+          to={`${ROUTES.profile}?tab=password`}
+          leftSection={<IconKey size={16} />}
+        >
+          Parol
+        </Menu.Item>
         <Menu.Divider />
         <LogoutMenuItem />
       </Menu.Dropdown>
