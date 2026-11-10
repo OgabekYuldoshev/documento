@@ -32,7 +32,6 @@ export function TemplatePage() {
       projectName={project.data.name}
       templateName={info.data.template.name}
       description={info.data.template.description ?? undefined}
-      currentNumber={info.data.current?.number}
       endSlot={<ColorSchemeToggle />}
     />
   );

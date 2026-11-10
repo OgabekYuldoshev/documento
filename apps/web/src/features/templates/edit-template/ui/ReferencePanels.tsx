@@ -50,6 +50,12 @@ type DrawersProps = {
   versionsPanel: ReactNode;
 };
 
+// Sticky header needs a divider and the body a gap, otherwise content touches the header.
+const drawerStyles = {
+  header: { borderBottom: "1px solid var(--app-border)" },
+  body: { paddingTop: "var(--mantine-spacing-md)" },
+};
+
 /** Right-side drawers for API snippets and version history. */
 export function ReferenceDrawers({ open, onClose, apiPanel, versionsPanel }: DrawersProps) {
   return (
@@ -60,6 +66,7 @@ export function ReferenceDrawers({ open, onClose, apiPanel, versionsPanel }: Dra
         position="right"
         size="min(620px, 100vw)"
         title="API orqali ishlatish"
+        styles={drawerStyles}
       >
         {apiPanel}
       </Drawer>
@@ -69,6 +76,7 @@ export function ReferenceDrawers({ open, onClose, apiPanel, versionsPanel }: Dra
         position="right"
         size="min(460px, 100vw)"
         title="Versiyalar"
+        styles={drawerStyles}
       >
         {versionsPanel}
       </Drawer>

@@ -13,6 +13,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { trpc } from "@/shared/api";
 import { buildSnippets } from "../model/snippets";
+import { CodeBlock } from "./CodeBlock";
 
 type Props = { projectId: string; templateId: string };
 
@@ -53,9 +54,9 @@ export function ApiSnippets({ projectId, templateId }: Props) {
       />
       {active && (
         <Group align="flex-start" wrap="nowrap" gap="xs">
-          <Code block style={{ flex: 1, overflowX: "auto" }}>
-            {active.code}
-          </Code>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <CodeBlock code={active.code} language={active.language} />
+          </div>
           <CopyButton value={active.code}>
             {({ copied, copy }) => (
               <Tooltip label={copied ? "Nusxalandi" : "Nusxalash"}>

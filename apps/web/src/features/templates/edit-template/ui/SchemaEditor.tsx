@@ -3,7 +3,12 @@ import { Alert, List, Stack, Text } from "@mantine/core";
 import { useMemo } from "react";
 import { JsonEditor } from "./JsonEditor";
 
-type Props = { value: string; onChange: (value: string) => void };
+type Props = {
+  value: string;
+  onChange: (value: string) => void;
+  readOnly?: boolean;
+  onBlockedEdit?: () => void;
+};
 
 const pointer = (path: PropertyKey[]) => path.map(String).join(".") || "(ildiz)";
 
@@ -28,11 +33,17 @@ export const sampleTextFromSchema = (text: string): string | null => {
   }
 };
 
-export function SchemaEditor({ value, onChange }: Props) {
+export function SchemaEditor({ value, onChange, readOnly, onBlockedEdit }: Props) {
   const issues = useMemo(() => lintSchemaText(value), [value]);
   return (
     <Stack gap="xs" h="100%">
-      <JsonEditor value={value} onChange={onChange} label="JSON Schema" />
+      <JsonEditor
+        value={value}
+        onChange={onChange}
+        label="JSON Schema"
+        readOnly={readOnly}
+        onBlockedEdit={onBlockedEdit}
+      />
       {issues.length > 0 ? (
         <Alert color="red" variant="light" title="Schemada xatolar bor">
           <List size="sm">

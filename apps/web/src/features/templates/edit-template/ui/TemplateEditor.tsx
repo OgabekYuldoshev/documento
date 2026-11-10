@@ -1,4 +1,4 @@
-import { Badge, Button, Center, Group, Loader, Stack, Text } from "@mantine/core";
+import { Center, Loader, Text } from "@mantine/core";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { type ReactNode, useState } from "react";
 import { getErrorMessage, trpc } from "@/shared/api";
@@ -17,8 +17,6 @@ type Props = {
   projectName: string;
   templateName: string;
   description?: string;
-  /** Number of the published version, when there is one. */
-  currentNumber?: number | null;
   /** Rendered at the far right of the top bar. */
   endSlot?: ReactNode;
 };
@@ -29,11 +27,13 @@ export function TemplateEditor({
   projectName,
   templateName,
   description,
-  currentNumber,
   endSlot,
 }: Props) {
   const ids = { projectId, templateId };
   const { data: draft, isPending } = useQuery(trpc.templates.draft.queryOptions(ids));
+  const { data: current, isPending: currentPending } = useQuery(
+    trpc.templates.current.queryOptions(ids),
+  );
   // Bumped after a restore so the form remounts with the restored content.
   const [epoch, setEpoch] = useState(0);
   const [panel, setPanel] = useState<Panel | null>(null);
@@ -44,7 +44,7 @@ export function TemplateEditor({
     onError: (error) => notify.error(getErrorMessage(error)),
   });
 
-  if (isPending) {
+  if (isPending || currentPending) {
     return (
       <Center mih="30dvh">
         <Loader />
@@ -83,6 +83,25 @@ export function TemplateEditor({
     );
   }
 
+  if (current) {
+    return (
+      <DraftForm
+        key={`${current.id}:${epoch}`}
+        {...ids}
+        draft={current}
+        readOnly
+        onStartEditing={() => start.mutate(ids)}
+        startingEdit={start.isPending}
+        title={templateName}
+        description={description}
+        breadcrumbs={breadcrumbs}
+        apiPanel={apiPanel}
+        versionsPanel={versionsPanel}
+        endSlot={endSlot}
+      />
+    );
+  }
+
   return (
     <>
       <WorkspaceFrame
@@ -90,29 +109,12 @@ export function TemplateEditor({
         title={templateName}
         description={description}
         endSlot={endSlot}
-        badges={
-          currentNumber ? (
-            <Badge color="teal" variant="light">
-              v{currentNumber} faol
-            </Badge>
-          ) : undefined
-        }
-        actions={
-          <Group gap="xs" wrap="nowrap">
-            <PanelButtons onOpen={setPanel} showLimits={false} />
-            <Button loading={start.isPending} onClick={() => start.mutate(ids)}>
-              Tahrirlashni boshlash
-            </Button>
-          </Group>
-        }
+        actions={<PanelButtons onOpen={setPanel} showLimits={false} />}
       >
         <Center h="100%">
-          <Stack align="center" gap="xs" maw={420} ta="center">
-            <Text fw={600}>Qoralama yo'q</Text>
-            <Text c="dimmed" size="sm">
-              Joriy versiya o'zgarmas. Tahrirlash uchun undan yangi qoralama yarating.
-            </Text>
-          </Stack>
+          <Text c="dimmed" size="sm">
+            Shablonda hali versiya yo'q.
+          </Text>
         </Center>
       </WorkspaceFrame>
       <ReferenceDrawers

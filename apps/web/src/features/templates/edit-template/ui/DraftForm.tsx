@@ -9,6 +9,7 @@ import {
   Group,
   Modal,
   NumberInput,
+  Popover,
   SegmentedControl,
   Stack,
   Text,
@@ -19,6 +20,8 @@ import {
   IconDeviceFloppy,
   IconInfoCircle,
   IconLayoutSidebar,
+  IconLock,
+  IconPencil,
   IconRocket,
   IconWand,
 } from "@tabler/icons-react";
@@ -47,6 +50,10 @@ type Props = {
   apiPanel: ReactNode;
   versionsPanel: ReactNode;
   endSlot?: ReactNode;
+  /** Published version: viewable, not editable. `onStartEditing` creates a draft from it. */
+  readOnly?: boolean;
+  onStartEditing?: () => void;
+  startingEdit?: boolean;
 };
 
 const TREE_WIDTH = 188;
@@ -72,6 +79,9 @@ export function DraftForm({
   apiPanel,
   versionsPanel,
   endSlot,
+  readOnly = false,
+  onStartEditing,
+  startingEdit,
 }: Props) {
   const ed = useDraftEditor(projectId, templateId, draft);
   const { form, patch } = ed;
@@ -83,6 +93,15 @@ export function DraftForm({
   const [file, setFile] = useState<TemplateFile>("source");
   const [panel, setPanel] = useState<Panel | null>(null);
   const sourceRef = useRef<ReactCodeMirrorRef>(null);
+  const [blockedOpen, setBlockedOpen] = useState(false);
+  const blockedTimer = useRef<number | undefined>(undefined);
+
+  /** Explains why typing does nothing in the published version; closes itself. */
+  function notifyBlocked() {
+    setBlockedOpen(true);
+    window.clearTimeout(blockedTimer.current);
+    blockedTimer.current = window.setTimeout(() => setBlockedOpen(false), 3500);
+  }
 
   const fileName = TEMPLATE_FILES.find((f) => f.id === file)?.name ?? "";
 
@@ -121,64 +140,96 @@ export function DraftForm({
 
   const editor = (
     <Box h="100%" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      <Group justify="space-between" wrap="nowrap" h={32} style={{ flexShrink: 0 }}>
-        <Group gap={6} wrap="nowrap">
-          <Tooltip label={treeOpen ? "Fayllarni yashirish" : "Fayllarni ko'rsatish"}>
-            <ActionIcon
-              variant="subtle"
-              color="gray"
-              aria-label="Fayllar panelini almashtirish"
-              aria-pressed={treeOpen}
-              onClick={() => setTreeOpen((open) => !open)}
-            >
-              <IconLayoutSidebar size={16} />
-            </ActionIcon>
-          </Tooltip>
-          {treeOpen && wide ? (
-            <Text ff="monospace" size="sm" fw={600}>
-              {fileName}
-            </Text>
-          ) : (
-            // Without the tree, files are switched right here.
-            <SegmentedControl
-              size="xs"
-              value={file}
-              onChange={(v) => setFile(v as TemplateFile)}
-              data={TEMPLATE_FILES.map((f) => ({ value: f.id, label: f.name }))}
-              styles={{ label: { fontFamily: "var(--mantine-font-family-monospace)" } }}
-            />
-          )}
-          {file === "source" && (
-            <Tooltip multiline w={260} label={SOURCE_HINT}>
-              <IconInfoCircle size={15} color="var(--mantine-color-dimmed)" />
-            </Tooltip>
-          )}
-        </Group>
-        {file === "sample" && (
-          <Tooltip label="Schemadan avtomatik namuna yaratadi (hozirgi matnni almashtiradi)">
-            <Button
-              size="compact-xs"
-              variant="subtle"
-              leftSection={<IconWand size={14} />}
-              onClick={ed.fillSample}
-            >
-              Schemadan namuna
-            </Button>
-          </Tooltip>
-        )}
-      </Group>
+      <Popover
+        opened={readOnly && blockedOpen}
+        onChange={setBlockedOpen}
+        position="bottom-start"
+        withArrow
+        shadow="md"
+        offset={4}
+      >
+        <Popover.Target>
+          <Group justify="space-between" wrap="nowrap" h={32} style={{ flexShrink: 0 }}>
+            <Group gap={6} wrap="nowrap">
+              <Tooltip label={treeOpen ? "Fayllarni yashirish" : "Fayllarni ko'rsatish"}>
+                <ActionIcon
+                  variant="subtle"
+                  color="gray"
+                  aria-label="Fayllar panelini almashtirish"
+                  aria-pressed={treeOpen}
+                  onClick={() => setTreeOpen((open) => !open)}
+                >
+                  <IconLayoutSidebar size={16} />
+                </ActionIcon>
+              </Tooltip>
+              {treeOpen && wide ? (
+                <Text ff="monospace" size="sm" fw={600}>
+                  {fileName}
+                </Text>
+              ) : (
+                // Without the tree, files are switched right here.
+                <SegmentedControl
+                  size="xs"
+                  value={file}
+                  onChange={(v) => setFile(v as TemplateFile)}
+                  data={TEMPLATE_FILES.map((f) => ({ value: f.id, label: f.name }))}
+                  styles={{ label: { fontFamily: "var(--mantine-font-family-monospace)" } }}
+                />
+              )}
+              {file === "source" && (
+                <Tooltip multiline w={260} label={SOURCE_HINT}>
+                  <IconInfoCircle size={15} color="var(--mantine-color-dimmed)" />
+                </Tooltip>
+              )}
+            </Group>
+            {file === "sample" && !readOnly && (
+              <Tooltip label="Schemadan avtomatik namuna yaratadi (hozirgi matnni almashtiradi)">
+                <Button
+                  size="compact-xs"
+                  variant="subtle"
+                  leftSection={<IconWand size={14} />}
+                  onClick={ed.fillSample}
+                >
+                  Schemadan namuna
+                </Button>
+              </Tooltip>
+            )}
+          </Group>
+        </Popover.Target>
+        <Popover.Dropdown>
+          <Group gap="xs" wrap="nowrap" align="flex-start" maw={300}>
+            <IconLock size={16} style={{ flexShrink: 0, marginTop: 2 }} />
+            <Stack gap={2}>
+              <Text size="sm" fw={600}>
+                Tahrirlab bo'lmaydi
+              </Text>
+              <Text size="xs" c="dimmed">
+                Joriy versiya o'zgarmas. O'zgartirish uchun "Tahrirlashni boshlash" tugmasini
+                bosing.
+              </Text>
+            </Stack>
+          </Group>
+        </Popover.Dropdown>
+      </Popover>
 
       {pane(
         "source",
         <SourceEditor
           editorRef={sourceRef}
           value={form.source}
+          readOnly={readOnly}
+          onBlockedEdit={notifyBlocked}
           onChange={(source) => patch({ source })}
         />,
       )}
       {pane(
         "schema",
-        <SchemaEditor value={form.schemaText} onChange={(schemaText) => patch({ schemaText })} />,
+        <SchemaEditor
+          value={form.schemaText}
+          readOnly={readOnly}
+          onBlockedEdit={notifyBlocked}
+          onChange={(schemaText) => patch({ schemaText })}
+        />,
       )}
       {pane(
         "sample",
@@ -186,6 +237,8 @@ export function DraftForm({
           <JsonEditor
             label="Namuna ma'lumot"
             value={form.sampleText}
+            readOnly={readOnly}
+            onBlockedEdit={notifyBlocked}
             onChange={(sampleText) => patch({ sampleText })}
           />
           <Text size="xs" c="dimmed">
@@ -218,37 +271,55 @@ export function DraftForm({
         description={description}
         endSlot={endSlot}
         badges={
-          <Group gap={6} wrap="nowrap">
-            <Badge color="yellow" variant="light">
-              Qoralama v{draft.number}
+          readOnly ? (
+            <Badge color="teal" variant="light">
+              v{draft.number} faol
             </Badge>
-            {ed.dirty && (
-              <Badge color="gray" variant="dot">
-                Saqlanmagan
+          ) : (
+            <Group gap={6} wrap="nowrap">
+              <Badge color="yellow" variant="light">
+                Qoralama v{draft.number}
               </Badge>
-            )}
-          </Group>
+              {ed.dirty && (
+                <Badge color="gray" variant="dot">
+                  Saqlanmagan
+                </Badge>
+              )}
+            </Group>
+          )
         }
         actions={
           <Group gap="xs" wrap="nowrap">
-            <PanelButtons onOpen={setPanel} />
+            <PanelButtons onOpen={setPanel} showLimits={!readOnly} />
             <Divider orientation="vertical" my={6} />
-            <Button
-              variant="default"
-              leftSection={<IconDeviceFloppy size={16} />}
-              disabled={!ed.dirty}
-              loading={ed.saving}
-              onClick={ed.save}
-            >
-              Saqlash
-            </Button>
-            <Button
-              leftSection={<IconRocket size={16} />}
-              loading={ed.publishing}
-              onClick={() => ed.publish()}
-            >
-              Publish
-            </Button>
+            {readOnly ? (
+              <Button
+                leftSection={<IconPencil size={16} />}
+                loading={startingEdit}
+                onClick={onStartEditing}
+              >
+                Tahrirlashni boshlash
+              </Button>
+            ) : (
+              <>
+                <Button
+                  variant="default"
+                  leftSection={<IconDeviceFloppy size={16} />}
+                  disabled={!ed.dirty}
+                  loading={ed.saving}
+                  onClick={ed.save}
+                >
+                  Saqlash
+                </Button>
+                <Button
+                  leftSection={<IconRocket size={16} />}
+                  loading={ed.publishing}
+                  onClick={() => ed.publish()}
+                >
+                  Publish
+                </Button>
+              </>
+            )}
           </Group>
         }
       >

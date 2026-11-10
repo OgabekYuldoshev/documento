@@ -26,6 +26,8 @@ export const templatesRouter = router({
   /** Read-only: the current draft or null. `getDraft` creates one when missing. */
   draft: templateProcedure.query(({ ctx }) => templatesService.findDraft(ctx.template)),
 
+  current: templateProcedure.query(({ ctx }) => templatesService.findCurrent(ctx.template)),
+
   getDraft: templateProcedure.mutation(({ ctx }) => templatesService.getDraft(ctx.template)),
 
   saveDraft: templateProcedure
