@@ -114,6 +114,14 @@ pnpm 11 blocks dependency build scripts: allowed ones are listed under `allowBui
 - Web: project tab "Hujjatlar" (`entities/generation`, `widgets/generations-table`): DataTable with time, template, source (UI/API), status badge (tooltip shows the first validation error / Typst diagnostic), pages, size, duration, PDF download (`/api/generations/:id/file`); polls every 3 s while jobs are queued/processing.
 - Template page section "API orqali ishlatish" (`features/templates/edit-template/ui/ApiSnippets.tsx`, `model/snippets.ts`): cURL / Node.js / Python for `POST /v1/templates/:slug/generate`, body from `templates.apiExample` (sample generated from the published schema).
 
+## Scaling notes (load-test fixes, see `docs/load-test-2026-11-10.md`)
+
+- Queue fairness: `generationsRepository.pickNext` (idle project's oldest job first, else compare busy projects' heads) backed by partial index `generation_queued_project_idx`. Never reintroduce a correlated subquery over all queued rows.
+- Sync waits (`generationsService.waitFor`) wake on `notifyJobFinished` (`generations/job-events.ts`, called last in `processJob`'s `finally`); 1 s recheck is only a safety net.
+- Render memory: the scheduler reserves `estimateRenderMb(payload, images)` (not a flat 1 GB), so small docs run 4 in parallel and big payloads queue; it works without `prlimit` (macOS). A job above the whole budget runs alone.
+- `projects.page` (`{limit, offset, search}` -> `{items, total}`) feeds the projects table (`DataTable` `serverSide` prop); `projects.list` stays for sidebar/dashboard, capped at 500.
+- Node `keepAliveTimeout` is 130 s (above Caddy's idle). Hundreds of simultaneous new connections straight at the API can hit the OS accept backlog; keep Caddy in front.
+
 ## Account, audit, sign-in throttle (phase 3 done)
 
 - Account: `/profile` (tabs Profil/Parol). Name editable via `authClient.updateUser`; **email is read-only** (admins provision accounts). Password via `authClient.changePassword` (+ optional revoke of other sessions). Project delete: `projects.delete` (type the exact name, cascades rows + files, refused while jobs run).
