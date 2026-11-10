@@ -230,7 +230,7 @@ v1.post(
 
 // ---------- uploads ----------
 
-/** Raw binary body (Content-Type: image/png|jpeg|svg+xml); the file is validated by content, not by header. */
+/** Raw binary body (Content-Type: image/png|jpeg|webp|svg+xml); the file is validated by content, not by header. */
 v1.post("/uploads", async (c) => {
   const length = Number(c.req.header("content-length"));
   try {

@@ -44,7 +44,7 @@ export type ResolvedImages =
   | { ok: true; files: Map<string, { ext: string; path: string }> }
   | { ok: false; errors: { path: string; code: string; message: string }[] };
 
-const EXT = { png: "png", jpeg: "jpg", svg: "svg" } as const;
+const EXT = { png: "png", jpeg: "jpg", webp: "webp", svg: "svg" } as const;
 
 export const uploadsService = {
   /**
@@ -189,7 +189,7 @@ export const uploadsService = {
         id,
         projectId: project.id,
         apiKeyId,
-        format: info.format as "png" | "jpeg" | "svg",
+        format: info.format as "png" | "jpeg" | "webp" | "svg",
         mime: info.mime,
         size: (await stat(tmp)).size,
         sha256: hash.digest("hex"),

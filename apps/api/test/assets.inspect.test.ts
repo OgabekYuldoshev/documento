@@ -25,6 +25,26 @@ function jpeg(width: number, height: number) {
   return Buffer.concat([Buffer.from([0xff, 0xd8]), app0, sof]);
 }
 
+function webp(kind: "VP8 " | "VP8L" | "VP8X", width: number, height: number) {
+  const b = Buffer.alloc(40);
+  b.write("RIFF", 0, "latin1");
+  b.writeUInt32LE(32, 4);
+  b.write("WEBP", 8, "latin1");
+  b.write(kind, 12, "latin1");
+  if (kind === "VP8X") {
+    b.writeUIntLE(width - 1, 24, 3);
+    b.writeUIntLE(height - 1, 27, 3);
+  } else if (kind === "VP8L") {
+    b[20] = 0x2f;
+    b.writeUInt32LE((width - 1) | ((height - 1) << 14), 21);
+  } else {
+    b.set([0x9d, 0x01, 0x2a], 23);
+    b.writeUInt16LE(width, 26);
+    b.writeUInt16LE(height, 28);
+  }
+  return b;
+}
+
 const fails = (name: string, bytes: Uint8Array) => {
   try {
     inspectAsset(name, bytes);
@@ -35,6 +55,23 @@ const fails = (name: string, bytes: Uint8Array) => {
 };
 
 describe("inspectAsset", () => {
+  it("reads webp dimensions for lossy, lossless and extended files", () => {
+    for (const kind of ["VP8 ", "VP8L", "VP8X"] as const) {
+      expect(inspectAsset("a.webp", webp(kind, 1280, 720))).toMatchObject({
+        kind: "image",
+        format: "webp",
+        mime: "image/webp",
+        width: 1280,
+        height: 720,
+      });
+    }
+  });
+
+  it("rejects oversized webp and a webp renamed to png", () => {
+    expect(fails("bomb.webp", webp("VP8X", 10000, 10000))).toMatch(/megapiksel/);
+    expect(fails("a.png", webp("VP8L", 10, 10))).toMatch(/mos kelmaydi/);
+  });
+
   it("reads png and jpeg dimensions", () => {
     expect(inspectAsset("a.png", png(800, 600))).toMatchObject({
       kind: "image",

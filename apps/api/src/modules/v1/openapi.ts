@@ -31,6 +31,7 @@ export function buildOpenApi(projectName: string, templates: TemplateView[]) {
           content: {
             "image/png": { schema: { type: "string", format: "binary" } },
             "image/jpeg": { schema: { type: "string", format: "binary" } },
+            "image/webp": { schema: { type: "string", format: "binary" } },
             "image/svg+xml": { schema: { type: "string", format: "binary" } },
           },
         },

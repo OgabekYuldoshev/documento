@@ -86,7 +86,7 @@ export function AssetsModal({ opened, onClose, projectId, templateId, readOnly }
           {!readOnly && (
             <FileButton
               onChange={(f) => f && upload.mutate(f)}
-              accept=".png,.jpg,.jpeg,.svg,.ttf,.otf"
+              accept=".png,.jpg,.jpeg,.webp,.svg,.ttf,.otf"
             >
               {(props) => (
                 <Button

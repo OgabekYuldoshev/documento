@@ -180,7 +180,7 @@ export const upload = sqliteTable(
       .notNull()
       .references(() => project.id, { onDelete: "restrict" }),
     apiKeyId: text("api_key_id"),
-    format: text("format", { enum: ["png", "jpeg", "svg"] }).notNull(),
+    format: text("format", { enum: ["png", "jpeg", "webp", "svg"] }).notNull(),
     mime: text("mime").notNull(),
     size: integer("size").notNull(),
     sha256: text("sha256").notNull(),

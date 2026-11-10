@@ -69,6 +69,7 @@ const IMAGE_MIME: Record<string, string> = {
   png: "image/png",
   jpeg: "image/jpeg",
   jpg: "image/jpeg",
+  webp: "image/webp",
   svg: "image/svg+xml",
 };
 
