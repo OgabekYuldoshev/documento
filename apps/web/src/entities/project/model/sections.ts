@@ -1,7 +1,7 @@
-import { IconFileCheck, IconKey, IconSettings, IconTemplate } from "@tabler/icons-react";
+import { IconFileCheck, IconKey, IconSettings, IconTemplate, IconUsers } from "@tabler/icons-react";
 import type { ComponentType } from "react";
 
-export type ProjectSection = "templates" | "documents" | "keys" | "settings";
+export type ProjectSection = "templates" | "documents" | "keys" | "members" | "settings";
 
 /** Project areas: shown as page tabs and as sidebar shortcuts under the active project. */
 export const PROJECT_SECTIONS: {
@@ -12,6 +12,7 @@ export const PROJECT_SECTIONS: {
   { value: "templates", label: "Shablonlar", icon: IconTemplate },
   { value: "documents", label: "Hujjatlar", icon: IconFileCheck },
   { value: "keys", label: "API keylar", icon: IconKey },
+  { value: "members", label: "A'zolar", icon: IconUsers },
   { value: "settings", label: "Sozlamalar", icon: IconSettings },
 ];
 

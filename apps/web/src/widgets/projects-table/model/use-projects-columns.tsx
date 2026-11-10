@@ -1,7 +1,8 @@
 import { Anchor, Group, Text } from "@mantine/core";
 import { useMemo } from "react";
 import { Link } from "react-router";
-import type { Project } from "@/entities/project";
+import { canManageProject, type Project } from "@/entities/project";
+import { useSession } from "@/entities/session";
 import { ArchiveProjectButton } from "@/features/projects/archive-project";
 import { ROUTES } from "@/shared/config";
 import { formatDate } from "@/shared/lib";
@@ -10,6 +11,9 @@ import { createDataTableColumns } from "@/shared/ui";
 const col = createDataTableColumns<Project>();
 
 export function useProjectsColumns() {
+  const { user } = useSession();
+  const userId = user?.id;
+  const role = user?.role;
   return useMemo(
     () => [
       // Name + description in one cell: one scan target per row instead of three columns.
@@ -50,14 +54,16 @@ export function useProjectsColumns() {
         header: "",
         enableSorting: false,
         meta: { align: "right", width: 80 },
-        cell: ({ row }) => (
-          // The row is clickable; keep the archive action from also opening the project.
-          <Group gap={4} justify="flex-end" wrap="nowrap" onClick={(e) => e.stopPropagation()}>
-            <ArchiveProjectButton id={row.original.id} name={row.original.name} />
-          </Group>
-        ),
+        cell: ({ row }) =>
+          // Members cannot archive: only the owner and the superadmin can.
+          canManageProject(row.original, { id: userId ?? "", role }) && (
+            // The row is clickable; keep the archive action from also opening the project.
+            <Group gap={4} justify="flex-end" wrap="nowrap" onClick={(e) => e.stopPropagation()}>
+              <ArchiveProjectButton id={row.original.id} name={row.original.name} />
+            </Group>
+          ),
       }),
     ],
-    [],
+    [userId, role],
   );
 }

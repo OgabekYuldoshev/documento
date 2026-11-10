@@ -2,15 +2,23 @@ import { Button, Center, Group, Loader, Stack, Tabs, Text, Title } from "@mantin
 import { IconArchive } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
-import { DEFAULT_SECTION, PROJECT_SECTIONS, parseSection } from "@/entities/project";
+import {
+  canManageProject,
+  DEFAULT_SECTION,
+  PROJECT_SECTIONS,
+  parseSection,
+} from "@/entities/project";
+import { useSession } from "@/entities/session";
 import { ArchiveProjectButton } from "@/features/projects/archive-project";
 import { DeleteProjectButton } from "@/features/projects/delete-project";
+import { TransferOwnerButton } from "@/features/projects/members";
 import { ProjectSettingsForm } from "@/features/projects/update-project";
 import { trpc } from "@/shared/api";
 import { ROUTES } from "@/shared/config";
 import { PageHeader, SettingsSection } from "@/shared/ui";
 import { ApiKeysTable } from "@/widgets/api-keys-table";
 import { GenerationsTable } from "@/widgets/generations-table";
+import { ProjectMembersTable } from "@/widgets/project-members-table";
 import { TemplatesGrid } from "@/widgets/templates-grid";
 
 export function ProjectPage() {
@@ -18,6 +26,7 @@ export function ProjectPage() {
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const section = parseSection(params.get("tab"));
+  const { user } = useSession();
   const {
     data: project,
     isPending,
@@ -71,54 +80,68 @@ export function ProjectPage() {
         <Tabs.Panel value="keys">
           <ApiKeysTable projectId={project.id} />
         </Tabs.Panel>
+        <Tabs.Panel value="members">
+          <ProjectMembersTable projectId={project.id} ownerId={project.ownerId} />
+        </Tabs.Panel>
         <Tabs.Panel value="settings">
           <Stack gap="md">
             <ProjectSettingsForm key={project.updatedAt.getTime()} project={project} />
-            <SettingsSection
-              danger
-              title="Xavfli hudud"
-              description="Qaytarib bo'lmaydigan yoki ehtiyotkorlik talab qiladigan amallar."
-            >
-              <Stack gap="lg">
-                <Group justify="space-between" wrap="wrap" align="center" gap="md">
-                  <div>
-                    <Text fw={500}>Projectni arxivlash</Text>
-                    <Text size="sm" c="dimmed">
-                      Project ro'yxatdan yo'qoladi, shablonlari va API keylari ishlamay qoladi.
-                    </Text>
-                  </div>
-                  <ArchiveProjectButton
-                    id={project.id}
-                    name={project.name}
-                    onArchived={() => navigate(ROUTES.projects)}
-                    renderTrigger={(open) => (
-                      <Button
-                        color="red"
-                        variant="light"
-                        leftSection={<IconArchive size={16} />}
-                        onClick={open}
-                      >
-                        Arxivlash
-                      </Button>
-                    )}
-                  />
-                </Group>
-                <Group justify="space-between" wrap="wrap" align="center" gap="md">
-                  <div>
-                    <Text fw={500}>Projectni butunlay o'chirish</Text>
-                    <Text size="sm" c="dimmed">
-                      Shablonlar, API keylar, hujjatlar va fayllar bilan birga qaytarib bo'lmaydigan
-                      qilib o'chadi.
-                    </Text>
-                  </div>
-                  <DeleteProjectButton
-                    id={project.id}
-                    name={project.name}
-                    onDeleted={() => navigate(ROUTES.projects)}
-                  />
-                </Group>
-              </Stack>
-            </SettingsSection>
+            {canManageProject(project, user) && (
+              <SettingsSection
+                danger
+                title="Xavfli hudud"
+                description="Qaytarib bo'lmaydigan yoki ehtiyotkorlik talab qiladigan amallar."
+              >
+                <Stack gap="lg">
+                  <Group justify="space-between" wrap="wrap" align="center" gap="md">
+                    <div>
+                      <Text fw={500}>Egasini almashtirish</Text>
+                      <Text size="sm" c="dimmed">
+                        Project boshqa a'zoga o'tadi, siz a'zo bo'lib qolasiz.
+                      </Text>
+                    </div>
+                    <TransferOwnerButton projectId={project.id} projectName={project.name} />
+                  </Group>
+                  <Group justify="space-between" wrap="wrap" align="center" gap="md">
+                    <div>
+                      <Text fw={500}>Projectni arxivlash</Text>
+                      <Text size="sm" c="dimmed">
+                        Project ro'yxatdan yo'qoladi, shablonlari va API keylari ishlamay qoladi.
+                      </Text>
+                    </div>
+                    <ArchiveProjectButton
+                      id={project.id}
+                      name={project.name}
+                      onArchived={() => navigate(ROUTES.projects)}
+                      renderTrigger={(open) => (
+                        <Button
+                          color="red"
+                          variant="light"
+                          leftSection={<IconArchive size={16} />}
+                          onClick={open}
+                        >
+                          Arxivlash
+                        </Button>
+                      )}
+                    />
+                  </Group>
+                  <Group justify="space-between" wrap="wrap" align="center" gap="md">
+                    <div>
+                      <Text fw={500}>Projectni butunlay o'chirish</Text>
+                      <Text size="sm" c="dimmed">
+                        Shablonlar, API keylar, hujjatlar va fayllar bilan birga qaytarib
+                        bo'lmaydigan qilib o'chadi.
+                      </Text>
+                    </div>
+                    <DeleteProjectButton
+                      id={project.id}
+                      name={project.name}
+                      onDeleted={() => navigate(ROUTES.projects)}
+                    />
+                  </Group>
+                </Stack>
+              </SettingsSection>
+            )}
           </Stack>
         </Tabs.Panel>
       </Tabs>
