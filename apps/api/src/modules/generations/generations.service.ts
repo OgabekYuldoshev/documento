@@ -51,15 +51,14 @@ async function insertOrReplay(base: Base, rest: Rest): Promise<Generation> {
   }
 }
 
-const DAY_MS = 24 * 60 * 60_000;
-
 export const generationsService = {
-  /** Jobs in flight and failures in the last 24 h across the actor's projects. */
+  /** Job counters across the actor's projects (running, failed and created in 24 h / 7 d). */
   activity: (actor: Actor) =>
-    repo.activity(
-      isAdminRole(actor.role) ? {} : { ownerId: actor.id },
-      new Date(Date.now() - DAY_MS),
-    ),
+    repo.activity(isAdminRole(actor.role) ? {} : { ownerId: actor.id }, new Date()),
+
+  /** Latest generations across the actor's projects, with template and project names. */
+  recent: (actor: Actor, limit = 8) =>
+    repo.recentWithContext(isAdminRole(actor.role) ? {} : { ownerId: actor.id }, limit),
 
   async create(
     origin: Origin,

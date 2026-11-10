@@ -28,6 +28,12 @@ export const usersRepository = {
     return row?.n ?? 0;
   },
 
+  /** Creation time of every user (growth chart); the user table stays small. */
+  async createdDates() {
+    const rows = await db.select({ createdAt: user.createdAt }).from(user);
+    return rows.map((r) => r.createdAt);
+  },
+
   stats: async () => {
     const [row] = await db
       .select({

@@ -19,7 +19,7 @@ type ErrorJson = {
 };
 
 /** First readable failure line (validation error or Typst diagnostic), if any. */
-export function getGenerationError(row: GenerationItem): string | null {
+export function getGenerationError(row: { errorJson: unknown }): string | null {
   const e = row.errorJson as ErrorJson | null;
   if (!e) return null;
   const v = e.errors?.[0];

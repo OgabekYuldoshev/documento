@@ -1,0 +1,14 @@
+.row + .row {
+  border-top: 1px solid var(--app-border);
+}
+
+.rowLink {
+  flex: 1;
+  min-width: 0;
+}
+
+@media (hover: hover) {
+  .row:hover {
+    background: light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-6));
+  }
+}

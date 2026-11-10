@@ -3,6 +3,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { IconPlayerPlay, IconPlus } from "@tabler/icons-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
+import { useProjects } from "@/entities/project";
 import { getErrorMessage, queryClient, trpc } from "@/shared/api";
 import { notify } from "@/shared/lib";
 import { pruneEmpty, type SchemaNode } from "../model/schema-form";
@@ -10,20 +11,22 @@ import { GenerationResult } from "./GenerationResult";
 import { SchemaField } from "./SchemaField";
 
 type Props = {
-  projectId: string;
+  /** Omit on pages that are not inside a project (the dashboard): a project is picked first. */
+  projectId?: string;
   /** Skips the template choice (e.g. when started from a template card). */
   templateId?: string;
+  variant?: "filled" | "default";
 };
 
 /**
  * "Hujjat yaratish": pick a published template, fill a form generated from its JSON Schema, run
  * it through the real pipeline (queue, validation, Typst) and see the PDF, without the API.
  */
-export function GenerateDocumentButton({ projectId, templateId }: Props) {
+export function GenerateDocumentButton({ projectId, templateId, variant = "filled" }: Props) {
   const [opened, { open, close }] = useDisclosure(false);
   return (
     <>
-      <Button leftSection={<IconPlus size={16} />} onClick={open}>
+      <Button variant={variant} leftSection={<IconPlus size={16} />} onClick={open}>
         Hujjat yaratish
       </Button>
       <Drawer
@@ -38,9 +41,51 @@ export function GenerateDocumentButton({ projectId, templateId }: Props) {
         }}
       >
         {/* Mounted only while open: every opening starts from a fresh form. */}
-        {opened && <GenerateFlow projectId={projectId} fixedTemplateId={templateId} />}
+        {opened && <ProjectStep fixedProjectId={projectId} fixedTemplateId={templateId} />}
       </Drawer>
     </>
+  );
+}
+
+/** Picks the project when the button lives outside one; then hands over to the template step. */
+function ProjectStep({
+  fixedProjectId,
+  fixedTemplateId,
+}: {
+  fixedProjectId?: string;
+  fixedTemplateId?: string;
+}) {
+  const { data: projects, isPending } = useProjects();
+  const [picked, setPicked] = useState<string | null>(null);
+
+  if (fixedProjectId) {
+    return <GenerateFlow projectId={fixedProjectId} fixedTemplateId={fixedTemplateId} />;
+  }
+  if (isPending) return <Loader size="sm" mx="auto" my="xl" />;
+  if (!projects?.length) {
+    return (
+      <Alert color="yellow" variant="light" title="Project yo'q">
+        Hujjat yaratish uchun avval project va shablon yarating.
+      </Alert>
+    );
+  }
+
+  // One project needs no question.
+  const projectId = picked ?? (projects.length === 1 ? projects[0]?.id : null);
+
+  return (
+    <Stack gap="md" h="100%">
+      {projects.length > 1 && (
+        <Select
+          label="Project"
+          placeholder="Projectni tanlang"
+          data={projects.map((p) => ({ value: p.id, label: p.name }))}
+          value={picked}
+          onChange={setPicked}
+        />
+      )}
+      {projectId && <GenerateFlow key={projectId} projectId={projectId} />}
+    </Stack>
   );
 }
 

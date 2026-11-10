@@ -2,26 +2,61 @@ import { and, desc, eq, gte, inArray, isNotNull, lte, sql } from "drizzle-orm";
 import { db, schema } from "../../db/client";
 import type { GenerationStatus } from "../../db/schema";
 
-const { generation, project } = schema;
+const { generation, project, template } = schema;
 
 export type NewGeneration = typeof generation.$inferInsert;
 export type GenerationPatch = Partial<Omit<NewGeneration, "id">>;
 
 export const generationsRepository = {
-  /** Running jobs and recent failures across the projects in scope (sidebar status). */
-  async activity(filter: { ownerId?: string }, failedSince: Date) {
+  /** Job counters across the projects in scope (sidebar status, dashboard cards). */
+  async activity(filter: { ownerId?: string }, now: Date) {
+    const day = new Date(now.getTime() - 24 * 60 * 60_000);
+    const week = new Date(now.getTime() - 7 * 24 * 60 * 60_000);
     const [row] = await db
       .select({
         running: sql<number>`count(*) filter (where ${inArray(generation.status, ["queued", "processing"])})`,
         failed: sql<number>`count(*) filter (where ${and(
           inArray(generation.status, ["render_error", "timeout"]),
-          gte(generation.queuedAt, failedSince),
+          gte(generation.queuedAt, day),
         )})`,
+        last24h: sql<number>`count(*) filter (where ${gte(generation.queuedAt, day)})`,
+        last7d: sql<number>`count(*) filter (where ${gte(generation.queuedAt, week)})`,
       })
       .from(generation)
       .innerJoin(project, eq(project.id, generation.projectId))
       .where(filter.ownerId ? eq(project.ownerId, filter.ownerId) : undefined);
-    return { running: Number(row?.running ?? 0), failed: Number(row?.failed ?? 0) };
+    return {
+      running: Number(row?.running ?? 0),
+      failed: Number(row?.failed ?? 0),
+      last24h: Number(row?.last24h ?? 0),
+      last7d: Number(row?.last7d ?? 0),
+    };
+  },
+
+  /** Latest generations with template and project names (dashboard feed). */
+  recentWithContext(filter: { ownerId?: string }, limit: number) {
+    return db
+      .select({
+        id: generation.id,
+        projectId: generation.projectId,
+        templateId: generation.templateId,
+        templateName: template.name,
+        projectName: project.name,
+        source: generation.source,
+        status: generation.status,
+        errorJson: generation.errorJson,
+        pages: generation.pages,
+        bytes: generation.bytes,
+        durationMs: generation.durationMs,
+        queuedAt: generation.queuedAt,
+        pdfExpiresAt: generation.pdfExpiresAt,
+      })
+      .from(generation)
+      .innerJoin(project, eq(project.id, generation.projectId))
+      .innerJoin(template, eq(template.id, generation.templateId))
+      .where(filter.ownerId ? eq(project.ownerId, filter.ownerId) : undefined)
+      .orderBy(desc(generation.queuedAt))
+      .limit(limit);
   },
 
   async insert(values: NewGeneration) {

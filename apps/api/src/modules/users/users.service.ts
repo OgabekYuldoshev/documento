@@ -51,6 +51,21 @@ export const usersService = {
   recent: (limit: number) => usersRepository.list(limit),
   stats: () => usersRepository.stats(),
 
+  /** Per-day new and cumulative users for the last `days` days (oldest first, server-local days). */
+  async growth(days = 30, now = new Date()) {
+    const created = (await usersRepository.createdDates()).map((d) => d.getTime());
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (days - 1));
+    return Array.from({ length: days }, (_, i) => {
+      const from = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i).getTime();
+      const to = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i + 1).getTime();
+      return {
+        date: new Date(from).toISOString(),
+        new: created.filter((t) => t >= from && t < to).length,
+        total: created.filter((t) => t < to).length,
+      };
+    });
+  },
+
   async create(actor: Actor, headers: Headers, input: CreateUserInput) {
     const allowed: readonly string[] = ASSIGNABLE_ROLES[actor.role];
     if (!allowed.includes(input.role)) {
