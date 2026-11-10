@@ -43,8 +43,8 @@ export function AppSidebar({ onNavigate }: { onNavigate: () => void }) {
         </Group>
       </MantineAppShell.Section>
 
-      <MantineAppShell.Section grow component={ScrollArea} type="auto" px="sm" py="md">
-        <Stack gap={20}>
+      <MantineAppShell.Section grow component={ScrollArea} type="auto" px="md" py="lg">
+        <Stack gap={32}>
           {getVisibleNavigation(isAdmin).map((group) => (
             <SidebarGroup key={group.title ?? "main"} title={group.title}>
               {group.items.map((item) => (

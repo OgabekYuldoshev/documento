@@ -4,15 +4,15 @@
   color: light-dark(var(--mantine-color-gray-6), var(--mantine-color-dark-2));
 }
 
-// One row style for the whole sidebar: compact (32 px), quiet, one accent for "active".
+// One row style for the whole sidebar: roomy (40 px, 36 px in trees), quiet, one accent for "active".
 a.link,
 button.link {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 10px;
-  height: 32px;
-  padding: 0 10px;
+  gap: 12px;
+  height: 40px;
+  padding: 0 14px;
   font-size: var(--mantine-font-size-sm);
   font-weight: 500;
   color: light-dark(var(--mantine-color-gray-7), var(--mantine-color-dark-1));
@@ -25,8 +25,8 @@ button.link {
     color 100ms ease;
 
   &[data-size="sm"] {
-    height: 28px;
-    padding: 0 8px;
+    height: 36px;
+    padding: 0 12px;
     font-weight: 450;
   }
 

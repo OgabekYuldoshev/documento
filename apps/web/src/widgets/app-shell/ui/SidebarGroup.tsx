@@ -4,11 +4,11 @@ import type { ReactNode } from "react";
 /** A captioned sidebar section; rows inside are tightly stacked. */
 export function SidebarGroup({ title, children }: { title?: string; children: ReactNode }) {
   return (
-    <Stack gap={1}>
+    <Stack gap={2}>
       {title && (
         <Text
-          px={10}
-          pb={4}
+          px={14}
+          pb={8}
           fz={11}
           fw={600}
           c="dimmed"
