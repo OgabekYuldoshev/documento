@@ -1,10 +1,8 @@
 import { EditorView } from "@codemirror/view";
 import {
-  ActionIcon,
   Badge,
   Box,
   Button,
-  Collapse,
   Divider,
   Group,
   Modal,
@@ -15,13 +13,12 @@ import {
   Text,
   Tooltip,
 } from "@mantine/core";
-import { useLocalStorage, useMediaQuery } from "@mantine/hooks";
 import {
   IconDeviceFloppy,
   IconInfoCircle,
-  IconLayoutSidebar,
   IconLock,
   IconPencil,
+  IconPhoto,
   IconRocket,
   IconWand,
 } from "@tabler/icons-react";
@@ -30,8 +27,8 @@ import { type ReactNode, useRef, useState } from "react";
 import type { TemplateDraft } from "@/entities/template";
 import { ConfirmModal } from "@/shared/ui";
 import { useDraftEditor } from "../model/useDraftEditor";
+import { AssetsModal } from "./AssetsModal";
 import { EditorSplit } from "./editor-split";
-import { FileTree } from "./FileTree";
 import { TEMPLATE_FILES, type TemplateFile } from "./files";
 import { JsonEditor } from "./JsonEditor";
 import { PreviewViewer } from "./PreviewViewer";
@@ -50,24 +47,15 @@ type Props = {
   apiPanel: ReactNode;
   versionsPanel: ReactNode;
   endSlot?: ReactNode;
+  startSlot?: ReactNode;
   /** Published version: viewable, not editable. `onStartEditing` creates a draft from it. */
   readOnly?: boolean;
   onStartEditing?: () => void;
   startingEdit?: boolean;
 };
 
-const TREE_WIDTH = 188;
-// The tree eats width the editor needs: open it by default only on really wide screens.
-const TREE_DEFAULT_OPEN = typeof window !== "undefined" && window.innerWidth >= 1600;
 const SOURCE_HINT =
   "Ma'lumot #let data = json(\"data.json\") orqali o'qiladi. Sahifa o'lchami va shriftlar shu kodda belgilanadi.";
-
-const treeBoxStyle = {
-  overflow: "auto",
-  border: "1px solid var(--app-border)",
-  borderRadius: "var(--mantine-radius-md)",
-  background: "var(--app-surface)",
-} as const;
 
 export function DraftForm({
   projectId,
@@ -79,17 +67,14 @@ export function DraftForm({
   apiPanel,
   versionsPanel,
   endSlot,
+  startSlot,
   readOnly = false,
   onStartEditing,
   startingEdit,
 }: Props) {
   const ed = useDraftEditor(projectId, templateId, draft);
   const { form, patch } = ed;
-  const wide = useMediaQuery("(min-width: 75em)", true);
-  const [treeOpen, setTreeOpen] = useLocalStorage({
-    key: "documento-file-tree",
-    defaultValue: TREE_DEFAULT_OPEN,
-  });
+  const [assetsOpen, setAssetsOpen] = useState(false);
   const [file, setFile] = useState<TemplateFile>("source");
   const [panel, setPanel] = useState<Panel | null>(null);
   const sourceRef = useRef<ReactCodeMirrorRef>(null);
@@ -102,8 +87,6 @@ export function DraftForm({
     window.clearTimeout(blockedTimer.current);
     blockedTimer.current = window.setTimeout(() => setBlockedOpen(false), 3500);
   }
-
-  const fileName = TEMPLATE_FILES.find((f) => f.id === file)?.name ?? "";
 
   /** Opens main.typ and puts the cursor on `line` (from a Typst diagnostic). */
   function jumpToLine(line: number) {
@@ -134,10 +117,6 @@ export function DraftForm({
     </Box>
   );
 
-  const tree = (
-    <FileTree projectId={projectId} templateId={templateId} active={file} onSelect={setFile} />
-  );
-
   const editor = (
     <Box h="100%" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       <Popover
@@ -151,49 +130,44 @@ export function DraftForm({
         <Popover.Target>
           <Group justify="space-between" wrap="nowrap" h={32} style={{ flexShrink: 0 }}>
             <Group gap={6} wrap="nowrap">
-              <Tooltip label={treeOpen ? "Fayllarni yashirish" : "Fayllarni ko'rsatish"}>
-                <ActionIcon
-                  variant="subtle"
-                  color="gray"
-                  aria-label="Fayllar panelini almashtirish"
-                  aria-pressed={treeOpen}
-                  onClick={() => setTreeOpen((open) => !open)}
-                >
-                  <IconLayoutSidebar size={16} />
-                </ActionIcon>
-              </Tooltip>
-              {treeOpen && wide ? (
-                <Text ff="monospace" size="sm" fw={600}>
-                  {fileName}
-                </Text>
-              ) : (
-                // Without the tree, files are switched right here.
-                <SegmentedControl
-                  size="xs"
-                  value={file}
-                  onChange={(v) => setFile(v as TemplateFile)}
-                  data={TEMPLATE_FILES.map((f) => ({ value: f.id, label: f.name }))}
-                  styles={{ label: { fontFamily: "var(--mantine-font-family-monospace)" } }}
-                />
-              )}
+              <SegmentedControl
+                size="xs"
+                value={file}
+                onChange={(v) => setFile(v as TemplateFile)}
+                data={TEMPLATE_FILES.map((f) => ({ value: f.id, label: f.name }))}
+                styles={{ label: { fontFamily: "var(--mantine-font-family-monospace)" } }}
+              />
               {file === "source" && (
                 <Tooltip multiline w={260} label={SOURCE_HINT}>
                   <IconInfoCircle size={15} color="var(--mantine-color-dimmed)" />
                 </Tooltip>
               )}
             </Group>
-            {file === "sample" && !readOnly && (
-              <Tooltip label="Schemadan avtomatik namuna yaratadi (hozirgi matnni almashtiradi)">
+            <Group gap={4} wrap="nowrap">
+              {file === "sample" && !readOnly && (
+                <Tooltip label="Schemadan avtomatik namuna yaratadi (hozirgi matnni almashtiradi)">
+                  <Button
+                    size="compact-xs"
+                    variant="subtle"
+                    leftSection={<IconWand size={14} />}
+                    onClick={ed.fillSample}
+                  >
+                    Schemadan namuna
+                  </Button>
+                </Tooltip>
+              )}
+              <Tooltip label="Rasm va shriftlar">
                 <Button
                   size="compact-xs"
                   variant="subtle"
-                  leftSection={<IconWand size={14} />}
-                  onClick={ed.fillSample}
+                  color="gray"
+                  leftSection={<IconPhoto size={14} />}
+                  onClick={() => setAssetsOpen(true)}
                 >
-                  Schemadan namuna
+                  Fayllar
                 </Button>
               </Tooltip>
-            )}
+            </Group>
           </Group>
         </Popover.Target>
         <Popover.Dropdown>
@@ -272,6 +246,7 @@ export function DraftForm({
         title={title}
         description={description}
         endSlot={endSlot}
+        startSlot={startSlot}
         badges={
           readOnly ? (
             <Badge color="teal" variant="light">
@@ -325,25 +300,7 @@ export function DraftForm({
           </Group>
         }
       >
-        {wide ? (
-          <Group h="100%" gap="md" align="stretch" wrap="nowrap">
-            {treeOpen && (
-              <Box w={TREE_WIDTH} style={{ flexShrink: 0, ...treeBoxStyle }}>
-                {tree}
-              </Box>
-            )}
-            <Box style={{ flex: 1, minWidth: 0 }}>{split}</Box>
-          </Group>
-        ) : (
-          <Stack gap="sm">
-            <Collapse expanded={treeOpen}>
-              <Box mah={240} style={treeBoxStyle}>
-                {tree}
-              </Box>
-            </Collapse>
-            {split}
-          </Stack>
-        )}
+        {split}
       </WorkspaceFrame>
 
       <Modal opened={panel === "limits"} onClose={() => setPanel(null)} title="Limitlar" centered>
@@ -372,6 +329,14 @@ export function DraftForm({
           </Text>
         </Stack>
       </Modal>
+
+      <AssetsModal
+        opened={assetsOpen}
+        onClose={() => setAssetsOpen(false)}
+        projectId={projectId}
+        templateId={templateId}
+        readOnly={readOnly}
+      />
 
       <ReferenceDrawers
         open={panel}

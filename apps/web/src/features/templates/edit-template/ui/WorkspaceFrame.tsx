@@ -2,6 +2,7 @@ import { ActionIcon, Anchor, Box, Breadcrumbs, Group, Text, Tooltip } from "@man
 import { IconArrowLeft } from "@tabler/icons-react";
 import type { ReactNode } from "react";
 import { Link } from "react-router";
+import { APP_HEADER_HEIGHT } from "@/shared/config";
 
 type Props = {
   breadcrumbs: { label: string; to: string }[];
@@ -12,6 +13,8 @@ type Props = {
   actions?: ReactNode;
   /** Far right of the bar (e.g. the color scheme toggle, composed by the page). */
   endSlot?: ReactNode;
+  /** Far left of the bar (e.g. the app sidebar toggle, composed by the page). */
+  startSlot?: ReactNode;
   children: ReactNode;
 };
 
@@ -23,17 +26,18 @@ export function WorkspaceFrame({
   badges,
   actions,
   endSlot,
+  startSlot,
   children,
 }: Props) {
   const back = breadcrumbs[breadcrumbs.length - 1];
   return (
-    <>
+    <Box h="100dvh" style={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
       <Group
         component="header"
         justify="space-between"
         wrap="nowrap"
         gap="sm"
-        h={52}
+        h={APP_HEADER_HEIGHT}
         px="md"
         style={{
           flexShrink: 0,
@@ -42,6 +46,7 @@ export function WorkspaceFrame({
         }}
       >
         <Group gap="sm" wrap="nowrap" miw={0}>
+          {startSlot}
           {back && (
             <Tooltip label={`${back.label}ga qaytish`}>
               <ActionIcon
@@ -76,6 +81,6 @@ export function WorkspaceFrame({
       <Box p="sm" style={{ flex: 1, minHeight: 0, overflow: "auto" }}>
         {children}
       </Box>
-    </>
+    </Box>
   );
 }

@@ -19,6 +19,7 @@ type Props = {
   description?: string;
   /** Rendered at the far right of the top bar. */
   endSlot?: ReactNode;
+  startSlot?: ReactNode;
 };
 
 export function TemplateEditor({
@@ -28,6 +29,7 @@ export function TemplateEditor({
   templateName,
   description,
   endSlot,
+  startSlot,
 }: Props) {
   const ids = { projectId, templateId };
   const { data: draft, isPending } = useQuery(trpc.templates.draft.queryOptions(ids));
@@ -79,6 +81,7 @@ export function TemplateEditor({
         apiPanel={apiPanel}
         versionsPanel={versionsPanel}
         endSlot={endSlot}
+        startSlot={startSlot}
       />
     );
   }
@@ -98,6 +101,7 @@ export function TemplateEditor({
         apiPanel={apiPanel}
         versionsPanel={versionsPanel}
         endSlot={endSlot}
+        startSlot={startSlot}
       />
     );
   }
@@ -109,6 +113,7 @@ export function TemplateEditor({
         title={templateName}
         description={description}
         endSlot={endSlot}
+        startSlot={startSlot}
         actions={<PanelButtons onOpen={setPanel} showLimits={false} />}
       >
         <Center h="100%">

@@ -9,7 +9,7 @@ import {
 import { IconFileText } from "@tabler/icons-react";
 import { Fragment } from "react";
 import { useSession } from "@/entities/session";
-import { ROUTES } from "@/shared/config";
+import { APP_HEADER_HEIGHT, ROUTES } from "@/shared/config";
 import { getVisibleNavigation } from "../model/navigation";
 import { SidebarGroup } from "./SidebarGroup";
 import { SidebarProjects } from "./SidebarProjects";
@@ -18,15 +18,13 @@ import { SidebarStatus } from "./SidebarStatus";
 import { SidebarLink } from "./sidebar-link";
 import { SidebarUserMenu } from "./sidebar-user-menu";
 
-export const HEADER_HEIGHT = 64;
-
 export function AppSidebar({ onNavigate }: { onNavigate: () => void }) {
   const { isAdmin } = useSession();
 
   return (
     <>
       <MantineAppShell.Section
-        h={HEADER_HEIGHT}
+        h={APP_HEADER_HEIGHT}
         px="md"
         style={{ borderBottom: "1px solid var(--app-border)" }}
       >

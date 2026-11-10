@@ -4,6 +4,7 @@ import { useParams } from "react-router";
 import { TemplateEditor } from "@/features/templates/edit-template";
 import { ColorSchemeToggle } from "@/features/theme/toggle-color-scheme";
 import { trpc } from "@/shared/api";
+import { SidebarToggleButton } from "@/widgets/app-shell";
 
 export function TemplatePage() {
   const { projectId = "", templateId = "" } = useParams();
@@ -32,6 +33,7 @@ export function TemplatePage() {
       projectName={project.data.name}
       templateName={info.data.template.name}
       description={info.data.template.description ?? undefined}
+      startSlot={<SidebarToggleButton />}
       endSlot={<ColorSchemeToggle />}
     />
   );
