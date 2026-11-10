@@ -1,6 +1,6 @@
 import { getRoleLabel } from "@documento/shared";
 import { Avatar, Menu, Stack, Text, UnstyledButton } from "@mantine/core";
-import { IconKey, IconSelector, IconUser } from "@tabler/icons-react";
+import { IconSelector, IconUser } from "@tabler/icons-react";
 import { Link } from "react-router";
 import { useSession } from "@/entities/session";
 import { UserRoleBadge } from "@/entities/user";
@@ -44,13 +44,6 @@ export function SidebarUserMenu() {
         <Menu.Divider />
         <Menu.Item component={Link} to={ROUTES.profile} leftSection={<IconUser size={16} />}>
           Profil
-        </Menu.Item>
-        <Menu.Item
-          component={Link}
-          to={`${ROUTES.profile}?tab=password`}
-          leftSection={<IconKey size={16} />}
-        >
-          Parol
         </Menu.Item>
         <Menu.Divider />
         <LogoutMenuItem />

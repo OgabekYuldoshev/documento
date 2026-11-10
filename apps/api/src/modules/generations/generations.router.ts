@@ -1,15 +1,13 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { GENERATION_STATUSES } from "../../db/schema";
-import { protectedProcedure, router } from "../../trpc/init";
+import { router } from "../../trpc/init";
 import { projectProcedure } from "../projects/project-procedure";
 import { generationsService, toPublicGeneration } from "./generations.service";
 
 const MAX_WAIT_MS = 25_000;
 
 export const generationsRouter = router({
-  activity: protectedProcedure.query(({ ctx }) => generationsService.activity(ctx.actor)),
-
   list: projectProcedure
     .input(
       z.object({

@@ -1,4 +1,4 @@
-import { AppShell as MantineAppShell } from "@mantine/core";
+import { Container, AppShell as MantineAppShell } from "@mantine/core";
 import { useDisclosure, useLocalStorage, useMediaQuery } from "@mantine/hooks";
 import { useMemo, useState } from "react";
 import { Outlet, useMatch } from "react-router";
@@ -62,7 +62,14 @@ export function AppShell() {
         <SearchSpotlight />
 
         <MantineAppShell.Main>
-          <Outlet />
+          {inEditor ? (
+            <Outlet />
+          ) : (
+            // Pages stay readable on wide screens: centered, capped width.
+            <Container size={1280} p={0}>
+              <Outlet />
+            </Container>
+          )}
         </MantineAppShell.Main>
       </MantineAppShell>
     </SidebarControlContext.Provider>

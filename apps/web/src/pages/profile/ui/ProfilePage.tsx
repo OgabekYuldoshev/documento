@@ -24,7 +24,7 @@ export function ProfilePage() {
   }
 
   return (
-    <Stack gap={0} maw={900}>
+    <Stack gap={0}>
       <PageHeader title="Hisob" description="Shaxsiy ma'lumot va xavfsizlik sozlamalari." />
       <Tabs
         value={tab}

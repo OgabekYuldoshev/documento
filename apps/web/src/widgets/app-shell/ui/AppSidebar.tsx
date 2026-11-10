@@ -14,7 +14,6 @@ import { getVisibleNavigation } from "../model/navigation";
 import { SidebarGroup } from "./SidebarGroup";
 import { SidebarProjects } from "./SidebarProjects";
 import { SidebarRecent } from "./SidebarRecent";
-import { SidebarStatus } from "./SidebarStatus";
 import { SidebarLink } from "./sidebar-link";
 import { SidebarUserMenu } from "./sidebar-user-menu";
 
@@ -65,8 +64,7 @@ export function AppSidebar({ onNavigate }: { onNavigate: () => void }) {
         </Stack>
       </MantineAppShell.Section>
 
-      <MantineAppShell.Section p="sm" style={{ borderTop: "1px solid var(--app-border)" }}>
-        <SidebarStatus />
+      <MantineAppShell.Section p="md" style={{ borderTop: "1px solid var(--app-border)" }}>
         <SidebarUserMenu />
       </MantineAppShell.Section>
     </>
