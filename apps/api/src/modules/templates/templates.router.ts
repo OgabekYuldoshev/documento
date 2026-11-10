@@ -40,9 +40,9 @@ export const templatesRouter = router({
     }),
   ),
 
-  /** Renders unsaved editor state; pages come back inline (<= 20 MB total) as SVG strings. */
+  /** Renders unsaved editor state; page SVGs are stored and served by /api/previews/:id/:page. */
   preview: templateProcedure.input(previewSchema).mutation(async ({ ctx, input }) => {
-    const result = await renderPreviewSvg({
+    const result = await renderPreviewSvg(ctx.actor.id, {
       source: input.source,
       schema: input.schema,
       data: input.sampleData,
@@ -53,7 +53,7 @@ export const templatesRouter = router({
     if (!result.ok) return result;
     return {
       ok: true as const,
-      svgPages: result.svgPages,
+      previewId: result.previewId,
       pages: result.pages,
       durationMs: result.durationMs,
     };

@@ -3,6 +3,7 @@ import { type TemplateSchema, templateSchemaSchema, transformImages } from "@doc
 import { TRPCError } from "@trpc/server";
 import { env } from "../../config/env";
 import { assetsService } from "../assets/assets.service";
+import { PREVIEW_MAX_TOTAL_BYTES, previewsService } from "../previews/previews.service";
 import { type DataError, validateData } from "../templates/validate-data";
 import { PLACEHOLDER_NAME, PLACEHOLDER_PNG } from "../uploads/placeholder";
 import type { Diagnostic } from "./diagnostics";
@@ -148,22 +149,26 @@ export async function renderPreview(input: RenderInput): Promise<PreviewResult> 
 }
 
 export type SvgPreviewResult =
-  | { ok: true; svgPages: string[]; pages: number; durationMs: number }
+  | { ok: true; previewId: string; pages: number; durationMs: number }
   | RenderFailure;
 
 /**
  * Editor preview: one SVG per page (Typst's own vector output, glyphs as paths so no fonts are
- * needed in the browser). The PDF pipeline used by publish and the API is untouched.
+ * needed in the browser). Pages are stored by `previewsService` and fetched one by one, so the
+ * page count and size are not bound by a response body. The PDF pipeline is untouched.
  */
-export async function renderPreviewSvg(input: RenderInput): Promise<SvgPreviewResult> {
+export async function renderPreviewSvg(
+  userId: string,
+  input: RenderInput,
+): Promise<SvgPreviewResult> {
   const result = await renderToFile({ ...input, format: "svg" });
   if (!result.ok) return result;
   try {
-    if (result.bytes > PREVIEW_MAX_BYTES) {
-      return tooLarge("Preview uchun juda katta (20 MB dan oshdi)");
+    if (result.bytes > PREVIEW_MAX_TOTAL_BYTES) {
+      return tooLarge("Preview uchun juda katta (400 MB dan oshdi), PDF'ni yuklab oling");
     }
-    const svgPages = await Promise.all(result.svgPaths.map((p) => readFile(p, "utf8")));
-    return { ok: true, svgPages, pages: result.pages, durationMs: result.durationMs };
+    const previewId = await previewsService.create(userId, result.svgPaths);
+    return { ok: true, previewId, pages: result.pages, durationMs: result.durationMs };
   } finally {
     await result.dispose();
   }

@@ -1,10 +1,11 @@
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { TemplateSchema } from "@documento/shared";
 import { describe, expect, it } from "vitest";
 import { env } from "../src/config/env";
+import { previewsService } from "../src/modules/previews/previews.service";
 import {
   renderPreview,
   renderPreviewSvg,
@@ -43,7 +44,7 @@ describe.skipIf(!hasTypst)("render service", () => {
   it("renders one SVG per page for the editor preview, in page order", async () => {
     const paged =
       '#let data = json("data.json")\n#data.name\n#pagebreak()\nIkkinchi\n#pagebreak()\nUchinchi';
-    const r = await renderPreviewSvg({
+    const r = await renderPreviewSvg("user-1", {
       source: paged,
       schema,
       data: { name: "Ali" },
@@ -52,13 +53,19 @@ describe.skipIf(!hasTypst)("render service", () => {
     expect(r.ok).toBe(true);
     if (r.ok) {
       expect(r.pages).toBe(3);
-      expect(r.svgPages).toHaveLength(3);
-      for (const page of r.svgPages) expect(page).toContain("<svg");
+      // Pages are stored per owner and served one by one.
+      for (const n of [1, 2, 3]) {
+        const path = await previewsService.pagePath("user-1", r.previewId, n);
+        expect(path).not.toBeNull();
+        expect(readFileSync(path as string, "utf8")).toContain("<svg");
+      }
+      expect(await previewsService.pagePath("user-1", r.previewId, 4)).toBeNull();
+      expect(await previewsService.pagePath("someone-else", r.previewId, 1)).toBeNull();
     }
   });
 
   it("reports Typst errors for the SVG preview too", async () => {
-    const r = await renderPreviewSvg({
+    const r = await renderPreviewSvg("user-1", {
       source: "#let x = (",
       schema,
       data: { name: "Ali" },

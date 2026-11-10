@@ -4,6 +4,7 @@ import { env } from "./config/env";
 import { convertLegacySchemas } from "./db/legacy-schema";
 import { startRetentionCleaner } from "./modules/generations/generations.service";
 import { startQueue } from "./modules/generations/queue";
+import { startPreviewCleaner } from "./modules/previews/previews.service";
 import { startUploadCleaner } from "./modules/uploads/uploads.service";
 
 serve({ fetch: app.fetch, port: env.PORT }, ({ port }) => {
@@ -13,4 +14,5 @@ serve({ fetch: app.fetch, port: env.PORT }, ({ port }) => {
 await convertLegacySchemas(); // dev DBs created before the JSON Schema switch
 await startQueue();
 startUploadCleaner();
+startPreviewCleaner();
 startRetentionCleaner();

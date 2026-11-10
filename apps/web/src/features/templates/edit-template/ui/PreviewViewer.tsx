@@ -50,7 +50,9 @@ export function PreviewViewer({
   const [page, setPage] = useState(1);
   const [problemsOpen, setProblemsOpen] = useState(true);
   const canvas = useRef<HTMLDivElement>(null);
-  const pageRefs = useRef<(HTMLImageElement | null)[]>([]);
+  const pageRefs = useRef<(HTMLDivElement | null)[]>([]);
+  // Width / height of the first page: reserves room for pages that are not loaded yet.
+  const [ratio, setRatio] = useState<number | null>(null);
 
   const pageCount = preview?.urls.length ?? 0;
   const zoom = (delta: number) =>
@@ -174,21 +176,16 @@ export function PreviewViewer({
         {preview ? (
           <Box style={{ width: `${scale * 100}%`, margin: "0 auto" }}>
             {preview.urls.map((url, i) => (
-              <img
+              <PageImage
                 key={url}
-                ref={(el) => {
+                url={url}
+                index={i}
+                // Until page 1 reports its size, only page 1 loads (it sets the placeholder size).
+                ratio={ratio}
+                disabled={i > 0 && !ratio}
+                onRatio={i === 0 ? setRatio : undefined}
+                innerRef={(el) => {
                   pageRefs.current[i] = el;
-                }}
-                src={url}
-                alt={`${i + 1}-sahifa`}
-                style={{
-                  display: "block",
-                  width: "100%",
-                  height: "auto",
-                  marginBottom: 16,
-                  background: "#fff",
-                  borderRadius: 2,
-                  boxShadow: "var(--mantine-shadow-sm)",
                 }}
               />
             ))}
@@ -257,6 +254,54 @@ export function PreviewViewer({
         </Box>
       )}
     </Box>
+  );
+}
+
+type PageImageProps = {
+  url: string;
+  index: number;
+  ratio: number | null;
+  disabled: boolean;
+  onRatio?: (ratio: number) => void;
+  innerRef: (el: HTMLDivElement | null) => void;
+};
+
+/** One lazily loaded page: keeps its slot sized so scrolling and the page counter stay stable. */
+function PageImage({ url, index, ratio, disabled, onRatio, innerRef }: PageImageProps) {
+  const [loaded, setLoaded] = useState(false);
+  const [failed, setFailed] = useState(false);
+  return (
+    <div
+      ref={innerRef}
+      style={{
+        marginBottom: 16,
+        background: "#fff",
+        borderRadius: 2,
+        boxShadow: "var(--mantine-shadow-sm)",
+        aspectRatio: loaded || !ratio ? undefined : String(ratio),
+        overflow: "hidden",
+      }}
+    >
+      {!disabled && !failed && (
+        <img
+          src={url}
+          alt={`${index + 1}-sahifa`}
+          loading={index === 0 ? "eager" : "lazy"}
+          onLoad={(e) => {
+            setLoaded(true);
+            const { naturalWidth: w, naturalHeight: h } = e.currentTarget;
+            if (onRatio && w && h) onRatio(w / h);
+          }}
+          onError={() => setFailed(true)}
+          style={{ display: "block", width: "100%", height: "auto" }}
+        />
+      )}
+      {failed && (
+        <Text size="xs" c="dimmed" ta="center" p="md">
+          Sahifa yuklanmadi, qayta render qiling
+        </Text>
+      )}
+    </div>
   );
 }
 

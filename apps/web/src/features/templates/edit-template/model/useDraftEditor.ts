@@ -22,7 +22,7 @@ const toSnapshot = (d: TemplateDraft): Snapshot => ({
   maxPayloadKb: d.maxPayloadKb,
 });
 
-/** Last successful render: one Blob URL (image/svg+xml) per page. */
+/** Last successful render: one image URL per page (served by /api/previews). */
 export type PreviewPages = { urls: string[]; durationMs: number };
 
 export type PreviewProblem = {
@@ -55,9 +55,6 @@ function failureItems(r: Failure): PreviewProblem["items"] {
     };
   });
 }
-
-// Rendered as <img>, never inlined: scripts inside an SVG do not run in an image context.
-const svgUrl = (svg: string) => URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" }));
 
 function parseObject(text: string): Record<string, unknown> | null {
   try {
@@ -103,19 +100,6 @@ export function useDraftEditor(projectId: string, templateId: string, draft: Tem
   const [preview, setPreview] = useState<PreviewPages | null>(null);
   const [problem, setProblem] = useState<PreviewProblem | null>(null);
 
-  // Blob URLs are not garbage collected: revoke on replace and on unmount.
-  const urls = useRef<string[]>([]);
-  const replaceUrls = (next: string[]) => {
-    for (const url of urls.current) URL.revokeObjectURL(url);
-    urls.current = next;
-  };
-  useEffect(
-    () => () => {
-      for (const url of urls.current) URL.revokeObjectURL(url);
-    },
-    [],
-  );
-
   const runId = useRef(0);
 
   /** Renders the unsaved editor state; late answers from older runs are dropped. */
@@ -144,9 +128,12 @@ export function useDraftEditor(projectId: string, templateId: string, draft: Tem
       });
       if (id !== runId.current) return;
       if (r.ok) {
-        const next = r.svgPages.map(svgUrl);
-        replaceUrls(next);
-        setPreview({ urls: next, durationMs: r.durationMs });
+        // Pages are fetched lazily by the viewer from the stored preview.
+        const urls = Array.from(
+          { length: r.pages },
+          (_, i) => `/api/previews/${r.previewId}/${i + 1}.svg`,
+        );
+        setPreview({ urls, durationMs: r.durationMs });
         setProblem(null);
       } else {
         setProblem({
