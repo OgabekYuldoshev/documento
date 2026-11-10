@@ -74,6 +74,13 @@ export const assetsService = {
     await storage.remove(asset.storageKey);
   },
 
+  /** Stored file of one asset (dashboard thumbnails); the storage key stays server side. */
+  async file(template: Template, assetId: string) {
+    const asset = await repo.find(template.id, assetId);
+    if (!asset) throw new TRPCError({ code: "NOT_FOUND", message: "Fayl topilmadi" });
+    return { path: storage.getPath(asset.storageKey), mime: asset.mime };
+  },
+
   /** Files the Typst runner copies into the job directory. */
   async forRender(templateId: string) {
     return (await repo.list(templateId)).map((a) => ({

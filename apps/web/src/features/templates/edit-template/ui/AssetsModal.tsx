@@ -1,5 +1,6 @@
 import {
   ActionIcon,
+  Badge,
   Button,
   CopyButton,
   FileButton,
@@ -7,6 +8,7 @@ import {
   Loader,
   Modal,
   Paper,
+  SimpleGrid,
   Stack,
   Text,
   Tooltip,
@@ -14,12 +16,13 @@ import {
 import {
   IconCheck,
   IconCopy,
-  IconPhoto,
+  IconFile,
   IconTrash,
   IconTypography,
   IconUpload,
 } from "@tabler/icons-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { getErrorMessage, queryClient, trpc } from "@/shared/api";
 import { notify } from "@/shared/lib";
 
@@ -74,10 +77,10 @@ export function AssetsModal({ opened, onClose, projectId, templateId, readOnly }
   });
 
   return (
-    <Modal opened={opened} onClose={onClose} title="Fayllar" size="md">
-      <Stack gap="sm">
-        <Group justify="space-between" wrap="nowrap" align="flex-start">
-          <Text size="sm" c="dimmed" maw={300}>
+    <Modal opened={opened} onClose={onClose} title="Fayllar" size="xl">
+      <Stack gap="md">
+        <Group justify="space-between" wrap="nowrap" align="center">
+          <Text size="sm" c="dimmed">
             Rasm va shriftlar. Nusxalash tugmasi Typst kodini ko'chiradi.
           </Text>
           {!readOnly && (
@@ -102,30 +105,34 @@ export function AssetsModal({ opened, onClose, projectId, templateId, readOnly }
 
         {isPending && <Loader size="sm" mx="auto" my="md" />}
         {assets?.length === 0 && (
-          <Text size="sm" c="dimmed" ta="center" py="lg">
+          <Text size="sm" c="dimmed" ta="center" py="xl">
             Fayl yo'q. PNG, JPG, SVG, TTF yoki OTF yuklang.
           </Text>
         )}
 
-        <Stack gap={6} mah={420} style={{ overflowY: "auto" }}>
+        <SimpleGrid
+          cols={{ base: 2, sm: 3, md: 4 }}
+          spacing="sm"
+          mah="60dvh"
+          style={{ overflowY: "auto" }}
+        >
           {assets?.map((asset) => {
             const snippet = asset.kind === "image" ? `#image("assets/${asset.name}")` : asset.name;
-            const Icon = asset.kind === "image" ? IconPhoto : IconTypography;
             return (
-              <Paper key={asset.id} withBorder px="sm" py={8} radius="md">
-                <Group gap="sm" wrap="nowrap">
-                  <Icon size={18} stroke={1.6} style={{ flexShrink: 0 }} />
+              <Paper key={asset.id} withBorder radius="md" style={{ overflow: "hidden" }}>
+                <AssetPreview templateId={templateId} asset={asset} />
+                <Group gap={4} wrap="nowrap" px="xs" py={6}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <Text size="sm" fw={500} lineClamp={1} title={asset.name}>
                       {asset.name}
                     </Text>
-                    <Text size="xs" c="dimmed" ff="monospace" lineClamp={1}>
-                      {snippet} · {formatSize(asset.size)}
+                    <Text size="xs" c="dimmed">
+                      {formatSize(asset.size)}
                     </Text>
                   </div>
                   <CopyButton value={snippet}>
                     {({ copied, copy }) => (
-                      <Tooltip label={copied ? "Nusxalandi" : "Kodni nusxalash"}>
+                      <Tooltip label={copied ? "Nusxalandi" : `Nusxalash: ${snippet}`}>
                         <ActionIcon
                           variant="subtle"
                           color={copied ? "teal" : "gray"}
@@ -154,8 +161,50 @@ export function AssetsModal({ opened, onClose, projectId, templateId, readOnly }
               </Paper>
             );
           })}
-        </Stack>
+        </SimpleGrid>
       </Stack>
     </Modal>
+  );
+}
+
+type AssetItem = NonNullable<ReturnType<typeof useAssetList>["data"]>[number];
+const useAssetList = (ids: { projectId: string; templateId: string }) =>
+  useQuery(trpc.templateAssets.list.queryOptions(ids));
+
+const extensionOf = (name: string) => name.split(".").pop()?.toUpperCase() ?? "";
+
+/** Images show their picture; everything else (fonts, ...) shows a tile with the file extension. */
+function AssetPreview({ templateId, asset }: { templateId: string; asset: AssetItem }) {
+  const [failed, setFailed] = useState(false);
+  const frame = {
+    height: 120,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    background: "var(--app-subtle)",
+    borderBottom: "1px solid var(--app-border)",
+  } as const;
+
+  if (asset.kind === "image" && !failed) {
+    return (
+      <div style={frame}>
+        <img
+          src={`/api/templates/${templateId}/assets/${asset.id}/file`}
+          alt={asset.name}
+          loading="lazy"
+          onError={() => setFailed(true)}
+          style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
+        />
+      </div>
+    );
+  }
+  const Icon = asset.kind === "font" ? IconTypography : IconFile;
+  return (
+    <div style={{ ...frame, flexDirection: "column", gap: 6 }}>
+      <Icon size={28} stroke={1.4} color="var(--mantine-color-dimmed)" />
+      <Badge variant="light" color="gray" radius="sm">
+        {extensionOf(asset.name)}
+      </Badge>
+    </div>
   );
 }
