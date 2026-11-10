@@ -9,6 +9,7 @@ import { auth } from "./lib/auth";
 import { assetsRoute } from "./modules/assets/assets.route";
 import { generationsRoute } from "./modules/generations/generations.route";
 import { previewsRoute } from "./modules/previews/previews.route";
+import { uploadsRoute } from "./modules/uploads/uploads.route";
 import { v1 } from "./modules/v1/v1.route";
 import { createContext } from "./trpc/init";
 
@@ -36,6 +37,7 @@ app.on(["GET", "POST"], "/api/auth/*", (c) => auth.handler(c.req.raw));
 app.route("/", assetsRoute);
 app.route("/", generationsRoute);
 app.route("/", previewsRoute);
+app.route("/", uploadsRoute);
 // External integration API: key-authenticated, no CORS (server-to-server).
 app.route("/v1", v1);
 

@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
+import { GenerateDocumentButton } from "@/features/generations/generate-document";
 import { trpc } from "@/shared/api";
 import { DataTable } from "@/shared/ui";
 import { useGenerationsColumns } from "../model/use-generations-columns";
@@ -29,6 +30,7 @@ export function GenerationsTable({ projectId }: { projectId: string }) {
       getRowId={(g) => g.id}
       isLoading={isPending}
       error={error?.message}
+      toolbar={<GenerateDocumentButton projectId={projectId} />}
       searchPlaceholder="Shablon yoki manba bo'yicha qidirish..."
       emptyTitle="Hozircha hujjat yaratilmagan"
       emptyDescription="API yoki sinov orqali yaratilgan hujjatlar shu yerda ko'rinadi"

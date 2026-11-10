@@ -18,7 +18,8 @@ export const generationsRoute = new Hono().get("/api/generations/:id/file", asyn
       return c.json({ message: "PDF muddati o'tgan, qayta generatsiya qiling" }, 410);
     }
     if (state === "not_ready") return c.json({ message: "PDF tayyor emas" }, 404);
-    return await streamPdf(row);
+    // `?inline=1` lets the dashboard show the PDF in an iframe; default is a download.
+    return await streamPdf(row, c.req.query("inline") === "1" ? "inline" : "attachment");
   } catch (error) {
     if (error instanceof TRPCError && error.code === "NOT_FOUND") {
       return c.json({ message: error.message }, 404);

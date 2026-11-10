@@ -115,7 +115,8 @@ export const uploadsService = {
    */
   async receive(
     project: Project,
-    apiKeyId: string,
+    /** Null for dashboard (session) uploads. */
+    apiKeyId: string | null,
     body: ReadableStream | null,
     declared?: number,
   ) {
