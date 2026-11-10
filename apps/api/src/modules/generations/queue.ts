@@ -8,6 +8,7 @@ import { renderToFile } from "../render/render.service";
 import { storage } from "../storage/storage";
 import { templatesRepository } from "../templates/templates.repository";
 import { uploadsService } from "../uploads/uploads.service";
+import { webhooksService } from "../webhooks/webhooks.service";
 import { generationsRepository as repo } from "./generations.repository";
 
 export const jobKey = (id: string) => `jobs/${id}.json`;
@@ -27,6 +28,8 @@ async function processJob(job: Generation): Promise<void> {
       durationMs: job.startedAt ? finishedAt.getTime() - job.startedAt.getTime() : null,
       ...patch,
     });
+    // After the row holds its final status; failure-safe and a no-op for UI runs.
+    await webhooksService.enqueueForGeneration(job.id);
   };
 
   try {
@@ -148,6 +151,7 @@ async function recover(opts: { startedBefore?: Date; skip?: string[] }) {
     ...opts,
   });
   await Promise.all(abandoned.map(removeJobFile));
+  await Promise.all(abandoned.map((id) => webhooksService.enqueueForGeneration(id)));
   if (requeued.length > 0) console.log(`[queue] requeued ${requeued.length} stalled job(s)`);
   if (abandoned.length > 0) console.warn(`[queue] gave up on ${abandoned.length} failing job(s)`);
   if (requeued.length > 0) kick();

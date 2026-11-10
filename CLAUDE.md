@@ -106,7 +106,7 @@ pnpm 11 blocks dependency build scripts: allowed ones are listed under `allowBui
 - Web: project tab "API keylar" (`entities/api-key`, `features/api-keys/{create-api-key,revoke-api-key}`, `widgets/api-keys-table`); creation shows the secret once in a modal.
 - Uploads (`modules/uploads/`): `POST /v1/uploads` takes a **raw binary body** (png/jpeg/svg, detected by content via `inspectContent`, not multipart), streams to a temp file (<= `UPLOAD_MAX_MB`), per-project active quota `UPLOAD_PROJECT_QUOTA_MB` (413 `quota_exceeded`), table `upload` (id `upl_<24 hex>`, expires after `UPLOAD_TTL_MINUTES`, swept every 10 min by `startUploadCleaner`). Returns `{uploadId, mime, bytes, width, height, expiresAt}`.
 - `image` fields take an upload id. `uploadsService.resolveImages` runs in `generations.create` (same project, not expired, `formats`/`maxSizeMb`/`maxMegapixels`; failures -> `validation_error` with JSON-pointer path, codes `image_not_found|image_format|image_size|image_pixels`; used uploads are extended to >= 1 h) and again in `queue.processJob`. `renderToFile` swaps ids for `uploads/<id>.<ext>` via `transformImages` and copies files into the job dir (`extraFiles`). Preview and publish dry-run use `images: { placeholder: true }` (built-in PNG), so sample data needs no real upload.
-- Not built yet: webhook (M6), webp.
+- Webhooks: see "Webhooks and retention" below. webp is supported (content-sniffed, VP8/VP8L/VP8X headers).
 
 ## Generation log, retention, snippets (phase 2, M5 done)
 
@@ -120,6 +120,15 @@ pnpm 11 blocks dependency build scripts: allowed ones are listed under `allowBui
 - Admin password reset: `users.resetPassword` (`adminProcedure`, same `assertCanManage` rank rules, calls `auth.api.setUserPassword` + `revokeUserSessions`). Web: `features/users/reset-password` (generate/copy password).
 - Audit: table `audit_log` (no FKs, name snapshots, append-only), `modules/audit/` (`auditService.record()` is best-effort and never throws; `audit.list` admin-only, filter by action, last 500). Action keys + Uzbek labels in `packages/shared/src/audit.ts` (`AUDIT_ACTIONS`): add a key there when auditing a new action. Recorded in services (users, projects, api-keys) and in the Hono auth guards (sign-in ok/failed/blocked with IP, password change). Web: `pages/audit` + `widgets/audit-table`, nav item "Audit log" (admin only).
 - Sign-in throttle: `modules/auth/login-guard.ts` (in-memory, single instance): `LOGIN_MAX_FAILURES` failures per email (x4 per IP) inside `LOGIN_LOCKOUT_MINUTES` -> 429 `TOO_MANY_ATTEMPTS` + `Retry-After`. Wired in `auth.guard.ts` (`signInGuard`, `changePasswordGuard`) in front of Better Auth in `app.ts`. IP = first `X-Forwarded-For` hop: the reverse proxy must set it.
+
+## Webhooks and retention (phase 3 done)
+
+- One webhook per project (`webhook` table: url, enabled, secret stored as-is because it signs requests; shown once on create/rotate, `secretHint` = last 4 chars). Managed through `webhooks.*` behind `managedProjectProcedure` (owner/superadmin only, members get FORBIDDEN/NOT_FOUND); web: project tab "Webhook" (`widgets/webhook-panel`, `features/webhooks/*`, hidden for members via `visibleSections`).
+- Events (only for **API-source** generations, UI test runs never fire): `document.completed`, `document.failed` (validation/render/timeout, also jobs the watchdog abandons), plus `ping` (manual test, logged, never retried). Enqueued from `queue.ts` `finishedWith` via `webhooksService.enqueueForGeneration` (best-effort, never throws).
+- Persistent queue = `webhook_delivery` table (payload snapshot, so every retry sends the same body; `id` is the event id for receiver dedup). Worker `startWebhookWorker()` (index.ts): 5 s tick, 5 concurrent, `sending` rows stuck > 5 min are released. 2xx = success; otherwise retry after 1 min, 5 min, 30 min, 2 h, 6 h (`WEBHOOK_MAX_ATTEMPTS`, default 6 total), then `failed`; `webhooks.retry` restarts a failed one by hand. Redirects are never followed.
+- Signature: `X-Documento-Signature: t=<unix>,v1=<hex HMAC-SHA256("<t>.<raw body>")>` (`signature.ts`, `verify()` doubles as the reference), plus `X-Documento-Event` and `X-Documento-Delivery`.
+- SSRF guard (`url-guard.ts`, `transport.ts`): http(s) only (https only in production), no credentials, no localhost/`.internal`, private/loopback/link-local ranges refused both on the literal host and on the DNS result at connect time. `WEBHOOK_ALLOW_PRIVATE=on` is for local dev only. Tests swap the network with `setWebhookTransport`.
+- Retention sweeps: audit rows older than `AUDIT_RETENTION_DAYS` (default 90) are deleted hourly (`startAuditCleaner`); finished webhook deliveries older than `WEBHOOK_LOG_RETENTION_DAYS` (default 30) hourly (pending ones are never pruned). Project delete removes the webhook and its log.
 
 ## API architecture (`apps/api/src`) - feature-based, layered
 
@@ -185,4 +194,4 @@ Conventions:
 ## Roadmap / not built yet
 
 Phase 1 (done): auth flow (login/logout, session, guards), seeded superadmin, admin-only user management, dashboard with stats, light/dark theme.
-Next candidates: webhook (M6), production deploy (single origin reverse proxy, secure cookies via `NODE_ENV=production`).
+Next candidates: production deploy, backups (single origin reverse proxy, secure cookies via `NODE_ENV=production`).

@@ -41,6 +41,15 @@ export const envSchema = z
     // Sign-in throttle: failures per email (and per IP, x4) inside the window lock further attempts.
     LOGIN_MAX_FAILURES: z.coerce.number().int().min(1).default(5),
     LOGIN_LOCKOUT_MINUTES: z.coerce.number().int().min(1).default(15),
+    // Audit rows older than this are deleted (swept hourly).
+    AUDIT_RETENTION_DAYS: z.coerce.number().int().min(1).default(90),
+    // Webhook delivery log rows older than this are deleted.
+    WEBHOOK_LOG_RETENTION_DAYS: z.coerce.number().int().min(1).default(30),
+    WEBHOOK_TIMEOUT_MS: z.coerce.number().int().min(1000).max(60000).default(10000),
+    // Total attempts per delivery (1 + retries at 1 min, 5 min, 30 min, 2 h, 6 h).
+    WEBHOOK_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(6).default(6),
+    // Dev only: allow webhook URLs that resolve to private/loopback addresses (SSRF guard off).
+    WEBHOOK_ALLOW_PRIVATE: z.enum(["on", "off"]).default("off"),
     SEED_SUPERADMIN_NAME: z.string().default("Super Admin"),
     SEED_SUPERADMIN_EMAIL: z.email().default("superadmin@example.com"),
     SEED_SUPERADMIN_PASSWORD: z.string().min(8).default(DEFAULT_SEED_PASSWORD),

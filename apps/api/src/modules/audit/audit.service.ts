@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { AuditAction, ListAuditInput } from "@documento/shared";
-import { and, desc, eq, like, or } from "drizzle-orm";
+import { and, desc, eq, like, lt, or } from "drizzle-orm";
+import { env } from "../../config/env";
 import { db } from "../../db/client";
 import { auditLog, user } from "../../db/schema";
 
@@ -49,6 +50,16 @@ export const auditService = {
     }
   },
 
+  /** Deletes rows older than the retention window; returns how many went. */
+  async cleanOld(now = new Date()): Promise<number> {
+    const cutoff = new Date(now.getTime() - env.AUDIT_RETENTION_DAYS * 86_400_000);
+    const rows = await db
+      .delete(auditLog)
+      .where(lt(auditLog.createdAt, cutoff))
+      .returning({ id: auditLog.id });
+    return rows.length;
+  },
+
   list(input: ListAuditInput) {
     const filters = [];
     if (input.action) filters.push(eq(auditLog.action, input.action));
@@ -70,3 +81,14 @@ export const auditService = {
       .limit(input.limit);
   },
 };
+
+/** Boot hook: prune once at start, then hourly. */
+export function startAuditCleaner() {
+  const run = () =>
+    auditService
+      .cleanOld()
+      .then((n) => n > 0 && console.log(`[audit] pruned ${n} old row(s)`))
+      .catch((e) => console.error("[audit] cleanup failed", e));
+  void run();
+  setInterval(run, 3_600_000).unref();
+}

@@ -10,6 +10,8 @@ const {
   templateAsset,
   generation,
   apiKey,
+  webhook,
+  webhookDelivery,
   upload,
 } = schema;
 
@@ -78,6 +80,8 @@ export const projectsRepository = {
             .where(inArray(templateAsset.templateId, templateIds))
         : [];
 
+      await tx.delete(webhookDelivery).where(eq(webhookDelivery.projectId, id));
+      await tx.delete(webhook).where(eq(webhook.projectId, id));
       await tx.delete(generation).where(eq(generation.projectId, id));
       await tx.delete(upload).where(eq(upload.projectId, id));
       await tx.delete(projectMember).where(eq(projectMember.projectId, id));

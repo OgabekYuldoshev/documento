@@ -6,3 +6,4 @@ export * from "./roles";
 export * from "./template-schema";
 export * from "./templates.schemas";
 export * from "./users.schemas";
+export * from "./webhooks.schemas";

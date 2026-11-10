@@ -9,7 +9,12 @@ import { IconFolder, IconSearch } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { useMatch, useNavigate } from "react-router";
-import { PROJECT_SECTIONS, projectSectionPath, useProjects } from "@/entities/project";
+import {
+  canManageProject,
+  projectSectionPath,
+  useProjects,
+  visibleSections,
+} from "@/entities/project";
 import { useSession } from "@/entities/session";
 import { trpc } from "@/shared/api";
 import { ROUTES } from "@/shared/config";
@@ -35,7 +40,7 @@ export function SearchTrigger() {
 /** Command palette: pages, projects, and the open project's sections and templates. */
 export function SearchSpotlight() {
   const navigate = useNavigate();
-  const { isAdmin } = useSession();
+  const { isAdmin, user } = useSession();
   const { data: projects } = useProjects();
   const activeId = useMatch(`${ROUTES.projects}/:projectId`)?.params.projectId;
   const { data: templates } = useQuery({
@@ -63,7 +68,7 @@ export function SearchSpotlight() {
       groups.push({
         group: active.name,
         actions: [
-          ...PROJECT_SECTIONS.map((s) => ({
+          ...visibleSections(canManageProject(active, user)).map((s) => ({
             id: `section-${s.value}`,
             label: s.label,
             description: "Project bo'limi",
@@ -92,7 +97,7 @@ export function SearchSpotlight() {
       })),
     });
     return groups;
-  }, [projects, templates, activeId, isAdmin, navigate]);
+  }, [projects, templates, activeId, isAdmin, navigate, user]);
 
   return (
     <Spotlight

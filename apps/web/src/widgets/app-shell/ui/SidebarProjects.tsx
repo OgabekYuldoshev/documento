@@ -3,11 +3,13 @@ import { IconDots, IconFolder, IconFolderOpen, IconPlus } from "@tabler/icons-re
 import { useMemo } from "react";
 import { useMatch, useSearchParams } from "react-router";
 import {
-  PROJECT_SECTIONS,
+  canManageProject,
   parseSection,
   projectSectionPath,
   useProjects,
+  visibleSections,
 } from "@/entities/project";
+import { useSession } from "@/entities/session";
 import { CreateProjectButton } from "@/features/projects/create-project";
 import { ROUTES } from "@/shared/config";
 import { SidebarAction, SidebarLink } from "./sidebar-link";
@@ -18,6 +20,7 @@ const VISIBLE_COUNT = 4;
 /** Newest projects nested under "Project'lar"; the open project expands into its sections. */
 export function SidebarProjects({ onNavigate }: { onNavigate: () => void }) {
   const { data, isPending } = useProjects();
+  const { user } = useSession();
   const activeId = useMatch(`${ROUTES.projects}/:projectId`)?.params.projectId;
   const [params] = useSearchParams();
   const section = parseSection(params.get("tab"));
@@ -66,7 +69,7 @@ export function SidebarProjects({ onNavigate }: { onNavigate: () => void }) {
             />
             {open && (
               <div className={classes.sections}>
-                {PROJECT_SECTIONS.map((item) => (
+                {visibleSections(canManageProject(project, user)).map((item) => (
                   <SidebarLink
                     key={item.value}
                     size="sm"

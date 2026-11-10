@@ -6,5 +6,6 @@ export {
   type ProjectSection,
   parseSection,
   projectSectionPath,
+  visibleSections,
 } from "./model/sections";
 export type { Project } from "./model/types";

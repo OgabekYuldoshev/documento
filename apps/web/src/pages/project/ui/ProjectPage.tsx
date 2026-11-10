@@ -5,8 +5,8 @@ import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import {
   canManageProject,
   DEFAULT_SECTION,
-  PROJECT_SECTIONS,
   parseSection,
+  visibleSections,
 } from "@/entities/project";
 import { useSession } from "@/entities/session";
 import { ArchiveProjectButton } from "@/features/projects/archive-project";
@@ -20,6 +20,7 @@ import { ApiKeysTable } from "@/widgets/api-keys-table";
 import { GenerationsTable } from "@/widgets/generations-table";
 import { ProjectMembersTable } from "@/widgets/project-members-table";
 import { TemplatesGrid } from "@/widgets/templates-grid";
+import { WebhookPanel } from "@/widgets/webhook-panel";
 
 export function ProjectPage() {
   const { projectId = "" } = useParams();
@@ -65,7 +66,7 @@ export function ProjectPage() {
         }
       >
         <Tabs.List mb="lg">
-          {PROJECT_SECTIONS.map((item) => (
+          {visibleSections(canManageProject(project, user)).map((item) => (
             <Tabs.Tab key={item.value} value={item.value}>
               {item.label}
             </Tabs.Tab>
@@ -80,6 +81,11 @@ export function ProjectPage() {
         <Tabs.Panel value="keys">
           <ApiKeysTable projectId={project.id} />
         </Tabs.Panel>
+        {canManageProject(project, user) && (
+          <Tabs.Panel value="webhooks">
+            <WebhookPanel projectId={project.id} />
+          </Tabs.Panel>
+        )}
         <Tabs.Panel value="members">
           <ProjectMembersTable projectId={project.id} ownerId={project.ownerId} />
         </Tabs.Panel>

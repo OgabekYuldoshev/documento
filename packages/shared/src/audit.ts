@@ -20,6 +20,8 @@ export const AUDIT_ACTIONS = {
   "project.owner_changed": "Project egasi almashtirildi",
   "api_key.created": "API key yaratildi",
   "api_key.revoked": "API key bekor qilindi",
+  "webhook.updated": "Webhook sozlandi",
+  "webhook.secret_rotated": "Webhook siri almashtirildi",
 } as const;
 
 export type AuditAction = keyof typeof AUDIT_ACTIONS;

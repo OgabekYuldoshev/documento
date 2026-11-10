@@ -8,6 +8,7 @@ import { projectMembersRouter } from "./modules/projects/members.router";
 import { projectsRouter } from "./modules/projects/projects.router";
 import { templatesRouter } from "./modules/templates/templates.router";
 import { usersRouter } from "./modules/users/users.router";
+import { webhooksRouter } from "./modules/webhooks/webhooks.router";
 import { router } from "./trpc/init";
 
 export const appRouter = router({
@@ -21,6 +22,7 @@ export const appRouter = router({
   generations: generationsRouter,
   apiKeys: apiKeysRouter,
   audit: auditRouter,
+  webhooks: webhooksRouter,
 });
 
 /** Type-only contract consumed by the web app: `import type { AppRouter } from "@documento/api"`. */
