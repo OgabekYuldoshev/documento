@@ -1,6 +1,7 @@
 import type { CreateProjectInput, Role, UpdateProjectInput } from "@documento/shared";
 import { TRPCError } from "@trpc/server";
 import { env } from "../../config/env";
+import { isUniqueViolation } from "../../db/errors";
 import type { Project } from "../../db/schema";
 import { auditService } from "../audit/audit.service";
 import { storage } from "../storage/storage";
@@ -74,7 +75,7 @@ export const projectsService = {
         });
         return created;
       } catch (error) {
-        const unique = String((error as Error).cause ?? error).includes("UNIQUE");
+        const unique = isUniqueViolation(error);
         if (!unique || attempt >= 3) throw error;
       }
     }

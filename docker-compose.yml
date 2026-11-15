@@ -1,17 +1,37 @@
-# Production stack: Caddy (TLS + SPA + proxy) -> API (Hono/tRPC) with SQLite and files on one volume.
+# Production stack: Caddy (TLS + SPA + proxy) -> API (Hono/tRPC) -> Postgres; files on the data volume.
 #   cp .env.docker.example .env   # fill in DOMAIN, BETTER_AUTH_SECRET and the superadmin
 #   docker compose up -d --build
 name: documento
 
 services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: documento
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env (openssl rand -base64 24)}
+      POSTGRES_DB: documento
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U documento -d documento"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    # Reachable only from the api container.
+
   api:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
     restart: unless-stopped
     init: true
+    depends_on:
+      postgres:
+        condition: service_healthy
     environment:
       NODE_ENV: ${NODE_ENV:-production}
+      DATABASE_URL: postgres://documento:${POSTGRES_PASSWORD}@postgres:5432/documento
       # The browser origin: cookies, CORS and Better Auth links are built from it.
       WEB_ORIGIN: https://${DOMAIN:?set DOMAIN in .env}
       BETTER_AUTH_URL: https://${DOMAIN}
@@ -33,7 +53,7 @@ services:
       LOGIN_MAX_FAILURES: ${LOGIN_MAX_FAILURES:-5}
       LOGIN_LOCKOUT_MINUTES: ${LOGIN_LOCKOUT_MINUTES:-15}
     volumes:
-      # SQLite database, uploaded assets, generated PDFs.
+      # Uploaded assets and generated PDFs (the database lives in the pgdata volume).
       - data:/data
       # Optional extra Typst fonts: drop .ttf/.otf files into ./fonts (read-only, scanned recursively).
       - ./fonts:/fonts/custom:ro
@@ -64,5 +84,6 @@ services:
 
 volumes:
   data:
+  pgdata:
   caddy_data:
   caddy_config:

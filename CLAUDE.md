@@ -10,11 +10,11 @@ Turborepo + pnpm monorepo. Two apps, one shared package, end-to-end type safety 
 |------|--------|
 | Monorepo | pnpm 11 workspaces + Turborepo 2, Node >= 24, TypeScript 7 (strict) |
 | Web (`apps/web`) | React 19, Vite, TypeScript, **Mantine 9** (light + dark theme, SCSS modules for special cases), React Router (data router), TanStack Query, TanStack Table v9, **Feature-Sliced Design** |
-| API (`apps/api`) | **Hono** (Node), **tRPC 11**, **Better Auth** (cookie sessions, admin plugin), **Drizzle ORM + SQLite** (libSQL driver), Zod |
+| API (`apps/api`) | **Hono** (Node), **tRPC 11**, **Better Auth** (cookie sessions, admin plugin), **Drizzle ORM + PostgreSQL** (`pg` pool), Zod |
 | Shared (`packages/shared`) | Zod schemas + role constants used by both apps |
 | Tooling | **Biome** (lint + format + import sort), **lefthook** git hooks, **commitlint** (Conventional Commits) |
 
-SQLite only. Never introduce Postgres.
+PostgreSQL only (17). SQLite was dropped; do not reintroduce it. Dialect-specific code (`drizzle-orm/pg-core`, `ilike`, `count(*) filter`, PL/pgSQL triggers) is fine.
 
 ## Repository layout
 
@@ -32,11 +32,12 @@ biome.json  lefthook.yml  commitlint.config.js  turbo.json  pnpm-workspace.yaml
 
 ```bash
 pnpm install
+pnpm db:up           # local Postgres on :5480 (docker-compose.dev.yml); `pnpm db:down` stops it
 cp apps/api/.env.example apps/api/.env    # then set BETTER_AUTH_SECRET (>=32 chars) and seed credentials
 pnpm db:setup        # migrate + seed first superadmin (idempotent)
 pnpm dev             # web http://localhost:3000, api http://localhost:3001
 pnpm check-types     # tsc across all packages
-pnpm test            # vitest (apps/api, in-memory SQLite, migrations applied per test file)
+pnpm test            # vitest (apps/api, needs `pnpm db:up`; each test file gets its own database cloned from a migrated template)
 pnpm lint            # biome check .   (pnpm lint:fix to autofix)
 pnpm db:generate     # drizzle-kit generate after editing src/db/schema
 pnpm db:studio
@@ -61,7 +62,7 @@ pnpm 11 blocks dependency build scripts: allowed ones are listed under `allowBui
 - Roles: `superadmin` > `admin` > `user` (`packages/shared/src/roles.ts`).
   - superadmin creates/blocks/deletes admins + users; admin only manages `user`s; nobody acts on themselves; nobody touches a superadmin.
   - Create-role matrix is `ASSIGNABLE_ROLES`; keep API checks and UI in sync with it.
-- **Superadmin is undeletable**: enforced at DB level by SQLite triggers (`0001_protect_superadmin.sql`: no delete, no demote, no ban) in addition to service checks. Never drop these triggers.
+- **Superadmin is undeletable**: enforced at DB level by PL/pgSQL triggers (`0001_protect_superadmin.sql`: no delete, no demote, no ban) in addition to service checks. Never drop these triggers.
 - First superadmin comes from `pnpm db:setup` (`src/db/seed.ts`, idempotent, skips if any superadmin exists). Change the seed password immediately outside local dev.
 - tRPC procedure tiers (`apps/api/src/trpc/init.ts`): `publicProcedure`, `protectedProcedure` (adds `ctx.actor`), `adminProcedure`, `superadminProcedure`. Pick the strictest that fits.
 - Web guards are router loaders in `apps/web/src/app/router/guards.ts` (`requireAuth`, `requireGuest`, `requireAdmin`). They are UX only; the API is the real authority.
@@ -164,7 +165,7 @@ modules/<feature>/  one folder per feature
 Rules:
 - Router -> service -> repository. Routers never touch the DB; repositories hold no business rules.
 - New feature = new `modules/<name>/` + register in `app-router.ts`. Shared zod inputs go in `packages/shared`.
-- Schema change: edit `db/schema/*`, run `pnpm db:generate`, commit the migration, `pnpm db:setup`. Custom SQL via `drizzle-kit generate --custom`. Better Auth tables (`user/session/account/verification` + admin plugin columns) must match what the plugin expects.
+- Schema change: edit `db/schema/*`, run `pnpm db:generate`, commit the migration, `pnpm db:setup`. Custom SQL via `drizzle-kit generate --custom`. Postgres rules: timestamps are `timestamptz` via `ts()` (`db/schema/columns.ts`), JSON columns are `jsonb`, `count(*)`/`sum` come back as strings (wrap in `Number`), unique violations are detected with `isUniqueViolation` (`db/errors.ts`, SQLSTATE 23505), text search uses `ilike`. drizzle-kit writes `"public".`-qualified FKs, so test isolation uses one database per file, not one schema. Better Auth tables (`user/session/account/verification` + admin plugin columns) must match what the plugin expects.
 - Throw `TRPCError` for expected failures; map Better Auth `APIError` (see `rethrow` in users.service).
 - Env: add new vars to `config/env.ts` AND `.env.example`.
 
@@ -204,7 +205,7 @@ Conventions:
 - Biome is the only linter/formatter (2 spaces, double quotes, 100 cols). Do not add ESLint/Prettier.
 - Commits follow Conventional Commits, validated by lefthook `commit-msg` (commitlint): `feat(web): add users page`. Scopes: `web, api, shared, config, deps, docs` (warn-level).
 - Pre-commit runs `biome check --write` on staged files; pre-push runs `pnpm check-types`.
-- Don't commit `.env` or `apps/api/data/*.db`.
+- Don't commit `.env`.
 
 ## Roadmap / not built yet
 

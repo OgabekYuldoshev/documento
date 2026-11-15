@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { env } from "../config/env";
 import { auth } from "../lib/auth";
-import { db, schema, sqlite } from "./client";
+import { db, pool, schema } from "./client";
 
 /** Idempotent: creates the first superadmin when none exists. */
 async function seedSuperadmin() {
@@ -21,25 +21,25 @@ async function seedSuperadmin() {
   const passwordHash = await ctx.password.hash(env.SEED_SUPERADMIN_PASSWORD);
 
   const userId = randomUUID();
-  await db.batch([
-    db.insert(schema.user).values({
+  await db.transaction(async (tx) => {
+    await tx.insert(schema.user).values({
       id: userId,
       name: env.SEED_SUPERADMIN_NAME,
       email: env.SEED_SUPERADMIN_EMAIL.toLowerCase(),
       emailVerified: true,
       role: "superadmin",
-    }),
-    db.insert(schema.account).values({
+    });
+    await tx.insert(schema.account).values({
       id: randomUUID(),
       userId,
       providerId: "credential",
       accountId: userId,
       password: passwordHash,
-    }),
-  ]);
+    });
+  });
 
   console.log(`✔ superadmin created: ${env.SEED_SUPERADMIN_EMAIL}`);
 }
 
 await seedSuperadmin();
-sqlite.close();
+await pool.end();

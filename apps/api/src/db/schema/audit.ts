@@ -1,17 +1,15 @@
-import { sql } from "drizzle-orm";
-import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { index, pgTable, text } from "drizzle-orm/pg-core";
+import { ts } from "./columns";
 
 /**
  * Append-only trail of sensitive actions. No foreign keys on purpose: rows must outlive the
  * users/projects they describe, so names are stored as snapshots.
  */
-export const auditLog = sqliteTable(
+export const auditLog = pgTable(
   "audit_log",
   {
     id: text("id").primaryKey(),
-    createdAt: integer("created_at", { mode: "timestamp_ms" })
-      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
-      .notNull(),
+    createdAt: ts("created_at").defaultNow().notNull(),
     actorId: text("actor_id"),
     /** Name/email of the actor at the time (or the attempted email for failed sign-ins). */
     actorLabel: text("actor_label"),

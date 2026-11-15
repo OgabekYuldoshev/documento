@@ -1,14 +1,14 @@
 import type { TemplateSchema } from "@documento/shared";
 import { sql } from "drizzle-orm";
-import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { index, integer, jsonb, pgTable, text, uniqueIndex } from "drizzle-orm/pg-core";
 import { user } from "./auth";
+import { ts } from "./columns";
 import { project } from "./projects";
 
-const now = sql`(cast(unixepoch('subsecond') * 1000 as integer))`;
 const timestamps = {
-  createdAt: integer("created_at", { mode: "timestamp_ms" }).default(now).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp_ms" })
-    .default(now)
+  createdAt: ts("created_at").defaultNow().notNull(),
+  updatedAt: ts("updated_at")
+    .defaultNow()
     .$onUpdate(() => new Date())
     .notNull(),
 };
@@ -16,7 +16,7 @@ const timestamps = {
 export const VERSION_STATUSES = ["draft", "published", "archived"] as const;
 export type VersionStatus = (typeof VERSION_STATUSES)[number];
 
-export const template = sqliteTable(
+export const template = pgTable(
   "template",
   {
     id: text("id").primaryKey(),
@@ -28,13 +28,13 @@ export const template = sqliteTable(
     description: text("description"),
     /** Latest published version (no FK: avoids a circular reference). */
     currentVersionId: text("current_version_id"),
-    archivedAt: integer("archived_at", { mode: "timestamp_ms" }),
+    archivedAt: ts("archived_at"),
     ...timestamps,
   },
   (t) => [uniqueIndex("template_project_slug_uq").on(t.projectId, t.slug)],
 );
 
-export const templateVersion = sqliteTable(
+export const templateVersion = pgTable(
   "template_version",
   {
     id: text("id").primaryKey(),
@@ -44,11 +44,11 @@ export const templateVersion = sqliteTable(
     number: integer("number").notNull(),
     status: text("status", { enum: VERSION_STATUSES }).notNull(),
     source: text("source").notNull(),
-    schema: text("schema", { mode: "json" }).$type<TemplateSchema>().notNull(),
-    sampleData: text("sample_data", { mode: "json" }).$type<Record<string, unknown>>().notNull(),
+    schema: jsonb("schema").$type<TemplateSchema>().notNull(),
+    sampleData: jsonb("sample_data").$type<Record<string, unknown>>().notNull(),
     renderTimeoutSec: integer("render_timeout_sec").notNull().default(60),
     maxPayloadKb: integer("max_payload_kb").notNull().default(1024),
-    publishedAt: integer("published_at", { mode: "timestamp_ms" }),
+    publishedAt: ts("published_at"),
     publishedBy: text("published_by").references(() => user.id, { onDelete: "set null" }),
     checksum: text("checksum"),
     ...timestamps,
@@ -64,7 +64,7 @@ export const templateVersion = sqliteTable(
 export type Template = typeof template.$inferSelect;
 export type TemplateVersion = typeof templateVersion.$inferSelect;
 
-export const templateAsset = sqliteTable(
+export const templateAsset = pgTable(
   "template_asset",
   {
     id: text("id").primaryKey(),
@@ -80,7 +80,7 @@ export const templateAsset = sqliteTable(
     width: integer("width"),
     height: integer("height"),
     storageKey: text("storage_key").notNull(),
-    createdAt: integer("created_at", { mode: "timestamp_ms" }).default(now).notNull(),
+    createdAt: ts("created_at").defaultNow().notNull(),
   },
   (t) => [uniqueIndex("template_asset_name_uq").on(t.templateId, t.name)],
 );
@@ -99,7 +99,7 @@ export const GENERATION_STATUSES = [
 export type GenerationStatus = (typeof GENERATION_STATUSES)[number];
 
 /** One document generation (UI test run now, API requests in M4). The input data itself is never stored. */
-export const generation = sqliteTable(
+export const generation = pgTable(
   "generation",
   {
     id: text("id").primaryKey(),
@@ -123,15 +123,15 @@ export const generation = sqliteTable(
     inputSha256: text("input_sha256").notNull(),
     /** Times a worker claimed this job; a job that keeps killing workers is given up on. */
     attempts: integer("attempts").notNull().default(0),
-    errorJson: text("error_json", { mode: "json" }).$type<unknown>(),
+    errorJson: jsonb("error_json").$type<unknown>(),
     pdfKey: text("pdf_key"),
     bytes: integer("bytes"),
     pages: integer("pages"),
-    queuedAt: integer("queued_at", { mode: "timestamp_ms" }).notNull(),
-    startedAt: integer("started_at", { mode: "timestamp_ms" }),
-    finishedAt: integer("finished_at", { mode: "timestamp_ms" }),
+    queuedAt: ts("queued_at").notNull(),
+    startedAt: ts("started_at"),
+    finishedAt: ts("finished_at"),
     durationMs: integer("duration_ms"),
-    pdfExpiresAt: integer("pdf_expires_at", { mode: "timestamp_ms" }),
+    pdfExpiresAt: ts("pdf_expires_at"),
   },
   (t) => [
     index("generation_status_queued_idx").on(t.status, t.queuedAt),
@@ -151,7 +151,7 @@ export type Generation = typeof generation.$inferSelect;
 export const API_KEY_SCOPES = ["project", "templates"] as const;
 
 /** Integration keys. Only the SHA-256 hash is stored; the full key is shown once on creation. */
-export const apiKey = sqliteTable(
+export const apiKey = pgTable(
   "api_key",
   {
     id: text("id").primaryKey(),
@@ -163,13 +163,13 @@ export const apiKey = sqliteTable(
     prefix: text("prefix").notNull().unique(),
     hash: text("hash").notNull(),
     scope: text("scope", { enum: API_KEY_SCOPES }).notNull(),
-    allowedTemplateIds: text("allowed_template_ids", { mode: "json" }).$type<string[] | null>(),
+    allowedTemplateIds: jsonb("allowed_template_ids").$type<string[] | null>(),
     rateLimitPerMin: integer("rate_limit_per_min").notNull().default(60),
-    expiresAt: integer("expires_at", { mode: "timestamp_ms" }),
-    revokedAt: integer("revoked_at", { mode: "timestamp_ms" }),
-    lastUsedAt: integer("last_used_at", { mode: "timestamp_ms" }),
+    expiresAt: ts("expires_at"),
+    revokedAt: ts("revoked_at"),
+    lastUsedAt: ts("last_used_at"),
     createdBy: text("created_by").references(() => user.id, { onDelete: "set null" }),
-    createdAt: integer("created_at", { mode: "timestamp_ms" }).default(now).notNull(),
+    createdAt: ts("created_at").defaultNow().notNull(),
   },
   (t) => [index("api_key_project_idx").on(t.projectId)],
 );
@@ -177,7 +177,7 @@ export const apiKey = sqliteTable(
 export type ApiKey = typeof apiKey.$inferSelect;
 
 /** Short-lived images uploaded by integrators; referenced from `image` fields by id (`upl_…`). */
-export const upload = sqliteTable(
+export const upload = pgTable(
   "upload",
   {
     /** Public id, e.g. `upl_3f9a…`. */
@@ -193,8 +193,8 @@ export const upload = sqliteTable(
     width: integer("width"),
     height: integer("height"),
     storageKey: text("storage_key").notNull(),
-    createdAt: integer("created_at", { mode: "timestamp_ms" }).default(now).notNull(),
-    expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
+    createdAt: ts("created_at").defaultNow().notNull(),
+    expiresAt: ts("expires_at").notNull(),
   },
   (t) => [index("upload_project_idx").on(t.projectId), index("upload_expires_idx").on(t.expiresAt)],
 );

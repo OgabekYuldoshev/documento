@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { AuditAction, ListAuditInput } from "@documento/shared";
-import { and, desc, eq, like, lt, or } from "drizzle-orm";
+import { and, desc, eq, ilike, lt, or } from "drizzle-orm";
 import { env } from "../../config/env";
 import { db } from "../../db/client";
 import { auditLog, user } from "../../db/schema";
@@ -67,9 +67,9 @@ export const auditService = {
       const term = `%${input.search.replace(/[%_]/g, (c) => `\\${c}`)}%`;
       filters.push(
         or(
-          like(auditLog.actorLabel, term),
-          like(auditLog.targetLabel, term),
-          like(auditLog.detail, term),
+          ilike(auditLog.actorLabel, term),
+          ilike(auditLog.targetLabel, term),
+          ilike(auditLog.detail, term),
         ),
       );
     }

@@ -48,7 +48,7 @@ export const templatesRepository = {
           filter.userId ? visibleTo(filter.userId) : undefined,
         ),
       )
-      .groupBy(template.id)
+      .groupBy(template.id, project.name)
       .orderBy(desc(touchedAt))
       .limit(limit);
   },

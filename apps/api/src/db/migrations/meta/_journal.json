@@ -1,96 +1,19 @@
 {
   "version": "7",
-  "dialect": "sqlite",
+  "dialect": "postgresql",
   "entries": [
     {
       "idx": 0,
-      "version": "6",
-      "when": 1794218423830,
+      "version": "7",
+      "when": 1794745751271,
       "tag": "0000_init",
       "breakpoints": true
     },
     {
       "idx": 1,
-      "version": "6",
-      "when": 1794218424059,
+      "version": "7",
+      "when": 1794745756308,
       "tag": "0001_protect_superadmin",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "6",
-      "when": 1794222316646,
-      "tag": "0002_late_gamora",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "6",
-      "when": 1794223011856,
-      "tag": "0003_numerous_patch",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "6",
-      "when": 1794223855443,
-      "tag": "0004_strange_zaladane",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "6",
-      "when": 1794223972801,
-      "tag": "0005_puzzling_winter_soldier",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "6",
-      "when": 1794224213935,
-      "tag": "0006_pretty_micromacro",
-      "breakpoints": true
-    },
-    {
-      "idx": 7,
-      "version": "6",
-      "when": 1794224832570,
-      "tag": "0007_gorgeous_post",
-      "breakpoints": true
-    },
-    {
-      "idx": 8,
-      "version": "6",
-      "when": 1794289707005,
-      "tag": "0008_friendly_night_nurse",
-      "breakpoints": true
-    },
-    {
-      "idx": 9,
-      "version": "6",
-      "when": 1794290264334,
-      "tag": "0009_greedy_professor_monster",
-      "breakpoints": true
-    },
-    {
-      "idx": 10,
-      "version": "6",
-      "when": 1794291181527,
-      "tag": "0010_mighty_dark_phoenix",
-      "breakpoints": true
-    },
-    {
-      "idx": 11,
-      "version": "6",
-      "when": 1794291725957,
-      "tag": "0011_little_kree",
-      "breakpoints": true
-    },
-    {
-      "idx": 12,
-      "version": "6",
-      "when": 1794294702046,
-      "tag": "0012_queue_claim_index",
       "breakpoints": true
     }
   ]

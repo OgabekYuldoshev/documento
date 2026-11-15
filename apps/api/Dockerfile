@@ -44,7 +44,6 @@ COPY --from=typst /usr/local/bin/typst /usr/local/bin/typst
 
 ENV NODE_ENV=production \
     PORT=3001 \
-    DATABASE_URL=file:/data/app.db \
     STORAGE_DIR=/data/storage \
     TYPST_BIN=/usr/local/bin/typst \
     FONTS_DIR=/fonts
