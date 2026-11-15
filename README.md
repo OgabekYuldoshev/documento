@@ -1,10 +1,11 @@
 # Documento
 
-Monorepo: `apps/web` (React + Vite + Mantine, FSD) and `apps/api` (Hono + tRPC + Better Auth + Drizzle/SQLite).
+Monorepo: `apps/web` (React + Vite + Mantine, FSD) and `apps/api` (Hono + tRPC + Better Auth + Drizzle/PostgreSQL).
 
 ```bash
 pnpm install
 cp apps/api/.env.example apps/api/.env   # set BETTER_AUTH_SECRET
+pnpm db:up                               # local Postgres (docker compose, port 5480)
 pnpm db:setup                            # migrate + seed superadmin
 pnpm dev                                 # web :3000, api :3001
 ```
@@ -13,12 +14,12 @@ Architecture, conventions and auth rules: see [CLAUDE.md](./CLAUDE.md).
 
 ## Production (Docker)
 
-Two images behind one origin: `web` (Caddy: TLS, the built SPA, proxy for `/api` and `/v1`) and `api`
-(Hono + tRPC, Typst 0.15.1 and fonts included). SQLite, uploaded assets and generated PDFs live on the
-`data` volume.
+Three containers behind one origin: `web` (Caddy: TLS, the built SPA, proxy for `/api` and `/v1`) and `api`
+(Hono + tRPC, Typst 0.15.1 and fonts included) and `postgres`. The database lives in the `pgdata`
+volume, uploaded assets and generated PDFs in the `data` volume.
 
 ```bash
-cp .env.docker.example .env     # set DOMAIN, BETTER_AUTH_SECRET, SEED_SUPERADMIN_EMAIL/PASSWORD
+cp .env.docker.example .env     # set DOMAIN, POSTGRES_PASSWORD, BETTER_AUTH_SECRET, SEED_SUPERADMIN_EMAIL/PASSWORD
 docker compose up -d --build    # DNS for DOMAIN must point here, ports 80/443 open
 docker compose logs -f api
 ```
@@ -36,17 +37,14 @@ docker compose logs -f api
 
 ### Backup
 
-Everything stateful is in the `data` volume. A consistent copy of the database while the API runs:
+State is in two volumes: `pgdata` (database) and `data` (assets, PDFs).
 
 ```bash
-docker compose exec api node -e "
-const { createClient } = require('@libsql/client');
-const file = '/data/backup-' + new Date().toISOString().slice(0, 10) + '.db';
-createClient({ url: process.env.DATABASE_URL }).execute(\"VACUUM INTO '\" + file + \"'\")
-  .then(() => console.log('ok', file));"
-docker compose cp api:/data/backup-$(date +%F).db ./backups/
+mkdir -p backups
+docker compose exec -T postgres pg_dump -U documento -Fc documento > backups/db-$(date +%F).dump
+docker compose cp api:/data/storage ./backups/storage-$(date +%F)
 ```
 
-Copy `/data/storage` (assets, PDFs) with `docker compose cp api:/data/storage ./backups/storage`.
-Restore: stop the stack, put the file back as `/data/app.db` in the volume, start again.
-Remove old `backup-*.db` files from the volume yourself.
+Restore: stop `api`, then
+`docker compose exec -T postgres pg_restore -U documento -d documento --clean --if-exists < backups/db-<date>.dump`,
+copy the storage folder back to `/data/storage`, start `api`.

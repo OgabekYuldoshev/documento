@@ -56,8 +56,8 @@ export const projectsRepository = {
       activeWhere(filter.userId),
       term
         ? or(
-            sql`${project.name} like ${`%${term}%`} escape '\\'`,
-            sql`${project.description} like ${`%${term}%`} escape '\\'`,
+            sql`${project.name} ilike ${`%${term}%`} escape '\\'`,
+            sql`${project.description} ilike ${`%${term}%`} escape '\\'`,
           )
         : undefined,
     );

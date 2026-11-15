@@ -1,1 +1,0 @@
-CREATE INDEX `generation_queued_project_idx` ON `generation` (`project_id`,`queued_at`) WHERE "generation"."status" = 'queued';

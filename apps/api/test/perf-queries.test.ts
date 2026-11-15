@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { sqlite as client } from "../src/db/client";
 import { templatesRepository } from "../src/modules/templates/templates.repository";
 import { callerFor, createUser } from "./factories";
 
@@ -31,14 +30,5 @@ describe("template version lookups", () => {
     expect(map.get(b.id)?.number).toBe(1);
     expect(map.size).toBe(2);
     expect((await templatesRepository.currentVersions([])).size).toBe(0);
-  });
-});
-
-describe("sqlite connection", () => {
-  it("waits for locks instead of failing at once, and enforces foreign keys", async () => {
-    const value = async (pragma: string) =>
-      Object.values((await client.execute(`PRAGMA ${pragma}`)).rows[0] ?? {})[0];
-    expect(Number(await value("busy_timeout"))).toBeGreaterThanOrEqual(5000);
-    expect(Number(await value("foreign_keys"))).toBe(1);
   });
 });

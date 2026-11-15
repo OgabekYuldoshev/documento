@@ -1,0 +1,24 @@
+# Local Postgres for development and tests:  pnpm db:up
+# App DB `documento`; the test suite clones throwaway `documento_test_*` databases from a migrated template.
+name: documento-dev
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: documento
+      POSTGRES_PASSWORD: documento
+      POSTGRES_DB: documento
+    ports:
+      - "5480:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U documento -d documento"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata:

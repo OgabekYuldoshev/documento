@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { type TemplateSchema, templateSchemaSchema } from "@documento/shared";
 import { TRPCError } from "@trpc/server";
 import { env } from "../../config/env";
+import { isUniqueViolation } from "../../db/errors";
 import type { Generation, Project } from "../../db/schema";
 import { canonicalJson } from "../../lib/canonical-json";
 import { projectsService } from "../projects/projects.service";
@@ -67,7 +68,7 @@ async function insertOrReplay(base: Base, rest: Rest): Promise<Generation> {
   try {
     return await repo.insert({ ...base, ...rest });
   } catch (error) {
-    const unique = String((error as Error).cause ?? error).includes("UNIQUE");
+    const unique = isUniqueViolation(error);
     if (unique && base.apiKeyId && base.idempotencyKey) {
       const prior = await repo.findByIdempotency(base.apiKeyId, base.idempotencyKey);
       if (prior) return prior;

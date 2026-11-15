@@ -39,7 +39,9 @@ describe("template tables", () => {
     const { mk } = await setup();
     const [p1, p2] = [await mk(), await mk()];
     await db.insert(schema.template).values(tpl(p1, "invoice"));
-    expect(await failure(db.insert(schema.template).values(tpl(p1, "invoice")))).toMatch(/UNIQUE/);
+    expect(await failure(db.insert(schema.template).values(tpl(p1, "invoice")))).toMatch(
+      /unique constraint/i,
+    );
     await db.insert(schema.template).values(tpl(p2, "invoice"));
   });
 
@@ -49,11 +51,11 @@ describe("template tables", () => {
     await db.insert(schema.template).values(t);
     await db.insert(schema.templateVersion).values(ver(t.id, 1, "draft"));
     expect(await failure(db.insert(schema.templateVersion).values(ver(t.id, 2, "draft")))).toMatch(
-      /UNIQUE/,
+      /unique constraint/i,
     );
     expect(
       await failure(db.insert(schema.templateVersion).values(ver(t.id, 1, "published"))),
-    ).toMatch(/UNIQUE/);
+    ).toMatch(/unique constraint/i);
     await db.insert(schema.templateVersion).values(ver(t.id, 2, "published"));
   });
 });

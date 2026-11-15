@@ -21,12 +21,14 @@ describe("project table", () => {
   it("rejects duplicate slugs", async () => {
     const u = await createUser();
     await db.insert(schema.project).values(base(u.id, "dup"));
-    expect(await failure(db.insert(schema.project).values(base(u.id, "dup")))).toMatch(/UNIQUE/);
+    expect(await failure(db.insert(schema.project).values(base(u.id, "dup")))).toMatch(
+      /unique constraint/i,
+    );
   });
 
   it("rejects unknown owner", async () => {
     expect(await failure(db.insert(schema.project).values(base("nope", "x1")))).toMatch(
-      /FOREIGN KEY/,
+      /foreign key constraint/i,
     );
   });
 
@@ -34,7 +36,7 @@ describe("project table", () => {
     const u = await createUser();
     await db.insert(schema.project).values(base(u.id, "owned"));
     expect(await failure(db.delete(schema.user).where(eq(schema.user.id, u.id)))).toMatch(
-      /FOREIGN KEY/,
+      /foreign key constraint/i,
     );
   });
 });

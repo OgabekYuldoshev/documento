@@ -9,6 +9,8 @@
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "format": "biome format --write .",
+    "db:up": "docker compose -f docker-compose.dev.yml up -d --wait",
+    "db:down": "docker compose -f docker-compose.dev.yml down",
     "db:setup": "pnpm --filter @documento/api db:setup",
     "db:generate": "pnpm --filter @documento/api db:generate",
     "db:studio": "pnpm --filter @documento/api db:studio",

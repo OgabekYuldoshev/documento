@@ -47,8 +47,8 @@ export const usersRepository = {
     const [row] = await db
       .select({
         total: count(),
-        banned: sql<number>`coalesce(sum(${user.banned}), 0)`,
-        admins: sql<number>`coalesce(sum(${user.role} in ('admin','superadmin')), 0)`,
+        banned: sql<number>`count(*) filter (where ${user.banned})`,
+        admins: sql<number>`count(*) filter (where ${user.role} in ('admin', 'superadmin'))`,
       })
       .from(user);
     const total = row?.total ?? 0;

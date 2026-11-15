@@ -1,8 +1,8 @@
-import { sql } from "drizzle-orm";
-import { index, integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { index, integer, pgTable, primaryKey, text } from "drizzle-orm/pg-core";
 import { user } from "./auth";
+import { ts } from "./columns";
 
-export const project = sqliteTable(
+export const project = pgTable(
   "project",
   {
     id: text("id").primaryKey(),
@@ -14,12 +14,10 @@ export const project = sqliteTable(
       .references(() => user.id, { onDelete: "restrict" }),
     /** null = use the global default (PDF_RETENTION_DAYS). */
     retentionDays: integer("retention_days"),
-    archivedAt: integer("archived_at", { mode: "timestamp_ms" }),
-    createdAt: integer("created_at", { mode: "timestamp_ms" })
-      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
-      .notNull(),
-    updatedAt: integer("updated_at", { mode: "timestamp_ms" })
-      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+    archivedAt: ts("archived_at"),
+    createdAt: ts("created_at").defaultNow().notNull(),
+    updatedAt: ts("updated_at")
+      .defaultNow()
       .$onUpdate(() => new Date())
       .notNull(),
   },
@@ -32,7 +30,7 @@ export type Project = typeof project.$inferSelect;
  * People (besides the owner) who may work in a project. The owner is `project.owner_id`, never
  * a row here. Rows go with the user (cascade) or the project (removed in `deleteCascade`).
  */
-export const projectMember = sqliteTable(
+export const projectMember = pgTable(
   "project_member",
   {
     projectId: text("project_id")
@@ -42,9 +40,7 @@ export const projectMember = sqliteTable(
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
     addedBy: text("added_by").references(() => user.id, { onDelete: "set null" }),
-    createdAt: integer("created_at", { mode: "timestamp_ms" })
-      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
-      .notNull(),
+    createdAt: ts("created_at").defaultNow().notNull(),
   },
   (t) => [
     primaryKey({ columns: [t.projectId, t.userId] }),
